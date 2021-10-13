@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2021  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -20,18 +20,18 @@
 #ifndef _circle_macros_h
 #define _circle_macros_h
 
-#define PACKED		__attribute__ ((packed))
-#define	ALIGN(n)	__attribute__ ((aligned (n)))
-#define NORETURN	__attribute__ ((noreturn))
+// #define PACKED		__attribute__ ((packed))
+// #define	ALIGN(n)	__attribute__ ((aligned (n)))
+// #define NORETURN	__attribute__ ((noreturn))
 #define NOOPT		__attribute__ ((optimize (0)))
 #define STDOPT		__attribute__ ((optimize (2)))
 #define MAXOPT		__attribute__ ((optimize (3)))
-#define WEAK		__attribute__ ((weak))
+// #define WEAK		__attribute__ ((weak))
 
-#define likely(exp)	__builtin_expect (!!(exp), 1)
-#define unlikely(exp)	__builtin_expect (!!(exp), 0)
+// #define likely(exp)	__builtin_expect (!!(exp), 1)
+// #define unlikely(exp)	__builtin_expect (!!(exp), 0)
 
-#define BIT(n)		(1U << (n))
+// #define BIT(n)		(1U << (n))
 
 #define IS_POWEROF_2(num) ((num) != 0 && (((num) & ((num) - 1)) == 0))
 
