@@ -19,7 +19,8 @@
 //
 #include <circle/classallocator.h>
 #include <circle/alloc.h>
-#include <circle/logger.h>
+// #include <circle/logger.h>
+#include <circleos.h>
 
 #define BLOCK_ALIGN	16U
 #define ALIGN_MASK	(~(BLOCK_ALIGN-1))
@@ -109,7 +110,7 @@ void *CClassAllocator::Allocate (void)
 {
 	if (m_bProtected)
 	{
-		m_SpinLock.Acquire ();
+		// m_SpinLock.Acquire ();
 	}
 
 	TBlock *pBlock = m_pFreeList;
@@ -117,10 +118,10 @@ void *CClassAllocator::Allocate (void)
 	{
 		if (m_bProtected)
 		{
-			m_SpinLock.Release ();
+			// m_SpinLock.Release ();
 		}
 
-		CLogger::Get ()->Write (m_pClassName, LogPanic,
+		LogWrite (m_pClassName, CIRCLE_LOG_ERROR,
 					"Trying to allocate more than %u instances",
 					m_nReservedObjects);
 
@@ -133,7 +134,7 @@ void *CClassAllocator::Allocate (void)
 
 	if (m_bProtected)
 	{
-		m_SpinLock.Release ();
+		// m_SpinLock.Release ();
 	}
 
 	return pBlock->Data;
@@ -150,7 +151,7 @@ void CClassAllocator::Free (void *pBlock)
 
 	if (m_bProtected)
 	{
-		m_SpinLock.Acquire ();
+		// m_SpinLock.Acquire ();
 	}
 
 	pBlk->pNext = m_pFreeList;
@@ -158,6 +159,6 @@ void CClassAllocator::Free (void *pBlock)
 
 	if (m_bProtected)
 	{
-		m_SpinLock.Release ();
+		// m_SpinLock.Release ();
 	}
 }

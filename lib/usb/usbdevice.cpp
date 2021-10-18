@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2021  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -29,6 +29,8 @@
 #include <circle/sysconfig.h>
 #include <circle/debug.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 #define MAX_CONFIG_DESC_SIZE		512		// best guess
 
@@ -115,7 +117,7 @@ CUSBDevice::CUSBDevice (CUSBHostController *pHost, TUSBSpeed Speed,
 	assert (m_pEndpoint0 == 0);
 	m_pEndpoint0 = new CUSBEndpoint (this);
 	assert (m_pEndpoint0 != 0);
-	
+
 	for (unsigned nFunction = 0; nFunction < USBDEV_MAX_FUNCTIONS; nFunction++)
 	{
 		m_pFunction[nFunction] = 0;
@@ -138,7 +140,7 @@ CUSBDevice::~CUSBDevice (void)
 		CString *pNames = GetNames ();
 		assert (pNames != 0);
 
-		LogWrite (LogNotice, "Device %s removed", (const char *) *pNames);
+		LogWrite (FromDevice , CIRCLE_LOG_NOTICE, "Device %s removed", (const char *) *pNames);
 
 		delete pNames;
 	}
@@ -155,13 +157,13 @@ CUSBDevice::~CUSBDevice (void)
 
 	delete m_pConfigDesc;
 	m_pConfigDesc = 0;
-	
+
 	delete m_pDeviceDesc;
 	m_pDeviceDesc = 0;
-	
+
 	delete m_pEndpoint0;
 	m_pEndpoint0 = 0;
-	
+
 	m_pHost = 0;
 }
 
@@ -170,7 +172,7 @@ boolean CUSBDevice::Initialize (void)
 #if RASPPI <= 3 && defined (REALTIME) && !defined (USE_USB_SOF_INTR)
 	if (m_Speed != USBSpeedHigh)
 	{
-		LogWrite (LogWarning, "Device speed is not allowed with REALTIME"
+		LogWrite (FromDevice, CIRCLE_LOG_WARNING, "Device speed is not allowed with REALTIME"
 				      " without USE_USB_SOF_INTR");
 
 		return FALSE;
@@ -180,17 +182,17 @@ boolean CUSBDevice::Initialize (void)
 	assert (m_pDeviceDesc == 0);
 	m_pDeviceDesc = new TUSBDeviceDescriptor;
 	assert (m_pDeviceDesc != 0);
-	
+
 	assert (m_pHost != 0);
 	assert (m_pEndpoint0 != 0);
-	
+
 	assert (sizeof *m_pDeviceDesc >= USB_DEFAULT_MAX_PACKET_SIZE);
 	if (m_pHost->GetDescriptor (m_pEndpoint0,
 				    DESCRIPTOR_DEVICE, DESCRIPTOR_INDEX_DEFAULT,
 				    m_pDeviceDesc, USB_DEFAULT_MAX_PACKET_SIZE)
 	    != USB_DEFAULT_MAX_PACKET_SIZE)
 	{
-		LogWrite (LogError, "Cannot get device descriptor (short)");
+		LogWrite (FromDevice, CIRCLE_LOG_ERROR, "Cannot get device descriptor (short)");
 
 		delete m_pDeviceDesc;
 		m_pDeviceDesc = 0;
@@ -201,7 +203,7 @@ boolean CUSBDevice::Initialize (void)
 	if (   m_pDeviceDesc->bLength	      != sizeof *m_pDeviceDesc
 	    || m_pDeviceDesc->bDescriptorType != DESCRIPTOR_DEVICE)
 	{
-		LogWrite (LogError, "Invalid device descriptor");
+		LogWrite (FromDevice, CIRCLE_LOG_ERROR, "Invalid device descriptor");
 
 		delete m_pDeviceDesc;
 		m_pDeviceDesc = 0;
@@ -211,7 +213,7 @@ boolean CUSBDevice::Initialize (void)
 
 	if (!m_pEndpoint0->SetMaxPacketSize (m_pDeviceDesc->bMaxPacketSize0))
 	{
-		LogWrite (LogError, "Cannot set maximum packet size on EP0");
+		LogWrite (FromDevice, CIRCLE_LOG_ERROR, "Cannot set maximum packet size on EP0");
 
 		delete m_pDeviceDesc;
 		m_pDeviceDesc = 0;
@@ -224,7 +226,7 @@ boolean CUSBDevice::Initialize (void)
 				    m_pDeviceDesc, sizeof *m_pDeviceDesc)
 	    != (int) sizeof *m_pDeviceDesc)
 	{
-		LogWrite (LogError, "Cannot get device descriptor");
+		LogWrite (FromDevice, CIRCLE_LOG_ERROR, "Cannot get device descriptor");
 
 		delete m_pDeviceDesc;
 		m_pDeviceDesc = 0;
@@ -240,20 +242,20 @@ boolean CUSBDevice::Initialize (void)
 	unsigned nAddress = s_DeviceAddressPool.AllocateNumber (FALSE);
 	if (nAddress == CNumberPool::Invalid)
 	{
-		LogWrite (LogError, "Too many devices");
+		LogWrite (FromDevice, CIRCLE_LOG_ERROR, "Too many devices");
 
 		return FALSE;
 	}
 
 	if (!m_pHost->SetAddress (m_pEndpoint0, (u8) nAddress))
 	{
-		LogWrite (LogError, "Cannot set address %u", nAddress);
+		LogWrite (FromDevice, CIRCLE_LOG_ERROR, "Cannot set address %u", nAddress);
 
 		s_DeviceAddressPool.FreeNumber (nAddress);
 
 		return FALSE;
 	}
-	
+
 	SetAddress ((u8) nAddress);
 #endif
 
@@ -275,7 +277,7 @@ boolean CUSBDevice::Initialize (void)
 				    m_pConfigDesc, sizeof *m_pConfigDesc)
 	    != (int) sizeof *m_pConfigDesc)
 	{
-		LogWrite (LogError, "Cannot get configuration descriptor (short)");
+		LogWrite (FromDevice, CIRCLE_LOG_ERROR, "Cannot get configuration descriptor (short)");
 
 		delete m_pConfigDesc;
 		m_pConfigDesc = 0;
@@ -287,8 +289,8 @@ boolean CUSBDevice::Initialize (void)
 	    || m_pConfigDesc->bDescriptorType != DESCRIPTOR_CONFIGURATION
 	    || m_pConfigDesc->wTotalLength    >  MAX_CONFIG_DESC_SIZE)
 	{
-		LogWrite (LogError, "Invalid configuration descriptor");
-		
+		LogWrite (FromDevice, CIRCLE_LOG_ERROR, "Invalid configuration descriptor");
+
 		delete m_pConfigDesc;
 		m_pConfigDesc = 0;
 
@@ -307,7 +309,7 @@ boolean CUSBDevice::Initialize (void)
 				    m_pConfigDesc, nTotalLength)
 	    != (int) nTotalLength)
 	{
-		LogWrite (LogError, "Cannot get configuration descriptor");
+		LogWrite (FromDevice, CIRCLE_LOG_ERROR, "Cannot get configuration descriptor");
 
 		delete m_pConfigDesc;
 		m_pConfigDesc = 0;
@@ -332,7 +334,7 @@ boolean CUSBDevice::Initialize (void)
 
 	CString *pNames = GetNames ();
 	assert (pNames != 0);
-	LogWrite (LogNotice, "Device %s found", (const char *) *pNames);
+	LogWrite (FromDevice, CIRCLE_LOG_NOTICE, "Device %s found", (const char *) *pNames);
 	delete pNames;
 
 	CString Product;
@@ -359,7 +361,7 @@ boolean CUSBDevice::Initialize (void)
 
 	if (Product.GetLength () > 0)
 	{
-		LogWrite (LogNotice, "Product: %s", (const char *) Product);
+		LogWrite (FromDevice, CIRCLE_LOG_NOTICE, "Product: %s", (const char *) Product);
 	}
 
 	unsigned nFunction = 0;
@@ -375,7 +377,7 @@ boolean CUSBDevice::Initialize (void)
 
 		if (pInterfaceDesc->bInterfaceNumber != ucInterfaceNumber)
 		{
-			LogWrite (LogDebug, "Alternate setting %u ignored",
+			LogWrite (FromDevice, CIRCLE_LOG_DEBUG, "Alternate setting %u ignored",
 				  (unsigned) pInterfaceDesc->bAlternateSetting);
 
 			continue;
@@ -403,7 +405,7 @@ boolean CUSBDevice::Initialize (void)
 			assert (pName != 0);
 			if (pName->Compare ("unknown") != 0)
 			{
-				LogWrite (LogNotice, "Interface %s found", (const char *) *pName);
+				LogWrite (FromDevice, CIRCLE_LOG_NOTICE, "Interface %s found", (const char *) *pName);
 
 				pChild = CUSBDeviceFactory::GetDevice (m_pFunction[nFunction], pName);
 			}
@@ -418,7 +420,7 @@ boolean CUSBDevice::Initialize (void)
 
 		if (pChild == 0)
 		{
-			LogWrite (LogWarning, "Function is not supported");
+			LogWrite (FromDevice, CIRCLE_LOG_WARNING, "Function is not supported");
 
 			continue;
 		}
@@ -427,7 +429,7 @@ boolean CUSBDevice::Initialize (void)
 
 		if (!m_pFunction[nFunction]->Initialize ())
 		{
-			LogWrite (LogError, "Cannot initialize function");
+			LogWrite (FromDevice, CIRCLE_LOG_ERROR, "Cannot initialize function");
 
 			delete m_pFunction[nFunction];
 			m_pFunction[nFunction] = 0;
@@ -437,7 +439,7 @@ boolean CUSBDevice::Initialize (void)
 
 		if (++nFunction == USBDEV_MAX_FUNCTIONS)
 		{
-			LogWrite (LogWarning, "Too many functions per device");
+			LogWrite (FromDevice, CIRCLE_LOG_WARNING, "Too many functions per device");
 
 			break;
 		}
@@ -447,7 +449,7 @@ boolean CUSBDevice::Initialize (void)
 
 	if (nFunction == 0)
 	{
-		LogWrite (LogWarning, "Device has no supported function");
+		LogWrite (FromDevice, CIRCLE_LOG_WARNING, "Device has no supported function");
 
 		return FALSE;
 	}
@@ -467,13 +469,13 @@ boolean CUSBDevice::Configure (void)
 
 	if (!m_pHost->SetConfiguration (m_pEndpoint0, m_pConfigDesc->bConfigurationValue))
 	{
-		LogWrite (LogError, "Cannot set configuration (%u)", (unsigned) m_pConfigDesc->bConfigurationValue);
+		LogWrite (FromDevice, CIRCLE_LOG_ERROR, "Cannot set configuration (%u)", (unsigned) m_pConfigDesc->bConfigurationValue);
 
 		return FALSE;
 	}
 
 	boolean bResult = FALSE;
-	
+
 	for (unsigned nFunction = 0; nFunction < USBDEV_MAX_FUNCTIONS; nFunction++)
 	{
 		if (m_pFunction[nFunction] != 0)
@@ -491,7 +493,7 @@ boolean CUSBDevice::Configure (void)
 			}
 		}
 	}
-	
+
 	return bResult;
 }
 
@@ -528,7 +530,7 @@ CString *CUSBDevice::GetName (TDeviceNameSelector Selector) const
 {
 	CString *pString = new CString;
 	assert (pString != 0);
-	
+
 	switch (Selector)
 	{
 	case DeviceNameVendor:
@@ -537,7 +539,7 @@ CString *CUSBDevice::GetName (TDeviceNameSelector Selector) const
 				 (unsigned) m_pDeviceDesc->idVendor,
 				 (unsigned) m_pDeviceDesc->idProduct);
 		break;
-		
+
 	case DeviceNameDevice:
 		assert (m_pDeviceDesc != 0);
 		if (   m_pDeviceDesc->bDeviceClass == 0
@@ -550,14 +552,14 @@ CString *CUSBDevice::GetName (TDeviceNameSelector Selector) const
 				 (unsigned) m_pDeviceDesc->bDeviceSubClass,
 				 (unsigned) m_pDeviceDesc->bDeviceProtocol);
 		break;
-		
+
 	default:
 		assert (0);
 	unknown:
 		*pString = "unknown";
 		break;
 	}
-	
+
 	return pString;
 }
 
@@ -580,7 +582,7 @@ CString *CUSBDevice::GetNames (void) const
 
 			pResult->Append (*pName);
 		}
-		
+
 		delete pName;
 	}
 
@@ -670,38 +672,38 @@ void CUSBDevice::ConfigurationError (const char *pSource) const
 	m_pConfigParser->Error (pSource);
 }
 
-void CUSBDevice::LogWrite (TLogSeverity Severity, const char *pMessage, ...)
-{
-	assert (pMessage != 0);
+// void CUSBDevice::LogWrite (TLogSeverity Severity, const char *pMessage, ...)
+// {
+// 	assert (pMessage != 0);
 
-	CString Source;
-#if RASPPI <= 3
-	Source.Format ("%s%u-%u", FromDevice, (unsigned) m_ucHubAddress, (unsigned) m_ucHubPortNumber);
-#else
-	Source.Format ("%s%u", FromDevice, m_nRootHubPortID);
+// 	CString Source;
+// #if RASPPI <= 3
+// 	Source.Format ("%s%u-%u", FromDevice, (unsigned) m_ucHubAddress, (unsigned) m_ucHubPortNumber);
+// #else
+// 	Source.Format ("%s%u", FromDevice, m_nRootHubPortID);
 
-	for (unsigned nTier = 0; nTier < 5; nTier++)
-	{
-		unsigned nHubPort = (m_nRouteString >> (nTier * 4)) & 0x0F;
-		if (nHubPort == 0)
-		{
-			break;
-		}
+// 	for (unsigned nTier = 0; nTier < 5; nTier++)
+// 	{
+// 		unsigned nHubPort = (m_nRouteString >> (nTier * 4)) & 0x0F;
+// 		if (nHubPort == 0)
+// 		{
+// 			break;
+// 		}
 
-		CString HubPort;
-		HubPort.Format ("-%u", nHubPort);
+// 		CString HubPort;
+// 		HubPort.Format ("-%u", nHubPort);
 
-		Source.Append (HubPort);
-	}
-#endif
+// 		Source.Append (HubPort);
+// 	}
+// #endif
 
-	va_list var;
-	va_start (var, pMessage);
+// 	va_list var;
+// 	va_start (var, pMessage);
 
-	CLogger::Get ()->WriteV (Source, Severity, pMessage, var);
+// 	LogWrite (Source, CIRCLE_LOG_DEBUG, pMessage, var);
 
-	va_end (var);
-}
+// 	va_end (var);
+// }
 
 #if RASPPI >= 4
 

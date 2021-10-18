@@ -20,6 +20,7 @@
 #ifndef _circle_macros_h
 #define _circle_macros_h
 
+#include <utils/attribute.h>
 // #define PACKED		__attribute__ ((packed))
 // #define	ALIGN(n)	__attribute__ ((aligned (n)))
 // #define NORETURN	__attribute__ ((noreturn))

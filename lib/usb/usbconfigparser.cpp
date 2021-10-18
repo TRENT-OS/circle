@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2020  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -18,9 +18,11 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 #include <circle/usb/usbconfigparser.h>
-#include <circle/logger.h>
+// #include <circle/logger.h>
 #include <circle/debug.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 #define SKIP_BYTES(pDesc, nBytes)	((TUSBDescriptor *) ((u8 *) (pDesc) + (nBytes)))
 
@@ -34,7 +36,7 @@ CUSBConfigurationParser::CUSBConfigurationParser (const void *pBuffer, unsigned 
 	m_pErrorPosition (m_pBuffer)
 {
 	assert (m_pBuffer != 0);
-	
+
 	if (   m_nBufLen < 4		// wTotalLength must exist
 	    || m_nBufLen > 512)		// best guess
 	{
@@ -165,7 +167,7 @@ const TUSBDescriptor *CUSBConfigurationParser::GetDescriptor (u8 ucType)
 	assert (m_bValid);
 
 	const TUSBDescriptor *pResult = 0;
-	
+
 	while (m_pNextPosition < m_pEndPosition)
 	{
 		u8 ucDescLen  = m_pNextPosition->Header.bLength;
@@ -196,7 +198,7 @@ const TUSBDescriptor *CUSBConfigurationParser::GetDescriptor (u8 ucType)
 	}
 
 	m_pCurrentDescriptor = pResult;
-	
+
 	return pResult;
 }
 
@@ -211,10 +213,10 @@ const TUSBDescriptor *CUSBConfigurationParser::GetCurrentDescriptor (void)
 void CUSBConfigurationParser::Error (const char *pSource) const
 {
 	assert (pSource != 0);
-	CLogger::Get ()->Write (pSource, LogError,
+	LogWrite (pSource, CIRCLE_LOG_ERROR,
 				"Invalid configuration descriptor (offset 0x%X)",
 				(unsigned) ((u8 *) m_pErrorPosition - (u8 *) m_pBuffer));
 #ifndef NDEBUG
-	debug_hexdump (m_pBuffer, m_nBufLen, pSource);
+	// debug_hexdump (m_pBuffer, m_nBufLen, pSource);
 #endif
 }

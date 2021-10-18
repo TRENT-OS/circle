@@ -18,8 +18,10 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 #include <circle/numberpool.h>
-#include <circle/logger.h>
+// #include <circle/logger.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 CNumberPool::CNumberPool (unsigned nMin, unsigned nMax)
 :	m_nMin (nMin),
@@ -50,7 +52,7 @@ unsigned CNumberPool::AllocateNumber (boolean bMustSucceed, const char *pFrom)
 		if (bMustSucceed)
 		{
 			assert (pFrom != 0);
-			CLogger::Get ()->Write (pFrom, LogPanic, "Number pool exhausted");
+			LogWrite (pFrom, CIRCLE_LOG_ERROR, "Number pool exhausted");
 		}
 
 		return Invalid;

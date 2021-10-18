@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2020  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -16,12 +16,12 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-// 
+//
 #ifndef _circle_koptions_h
 #define _circle_koptions_h
 
-#include <circle/bcmpropertytags.h>
-#include <circle/cputhrottle.h>
+// #include <circle/bcmpropertytags.h>
+// #include <circle/cputhrottle.h>
 #include <circle/types.h>
 
 class CKernelOptions
@@ -44,7 +44,7 @@ public:
 	const char *GetSoundDevice (void) const;	// defaults to empty string
 	unsigned GetSoundOption (void) const;
 
-	TCPUSpeed GetCPUSpeed (void) const;
+	// TCPUSpeed GetCPUSpeed (void) const;
 	unsigned GetSoCMaxTemp (void) const;
 
 	static CKernelOptions *Get (void);
@@ -57,7 +57,7 @@ private:
 	static unsigned GetDecimal (char *pString);	// returns decimal value, -1 on error
 
 private:
-	TPropertyTagCommandLine m_TagCommandLine;
+	// TPropertyTagCommandLine m_TagCommandLine;
 	char *m_pOptions;
 
 	unsigned m_nWidth;
@@ -74,7 +74,7 @@ private:
 	char m_SoundDevice[20];
 	unsigned m_nSoundOption;
 
-	TCPUSpeed m_CPUSpeed;
+	// TCPUSpeed m_CPUSpeed;
 	unsigned m_nSoCMaxTemp;
 
 	static CKernelOptions *s_pThis;

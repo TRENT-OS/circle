@@ -62,7 +62,7 @@ CDWHCITransactionQueue::~CDWHCITransactionQueue (void)
 
 void CDWHCITransactionQueue::Flush (void)
 {
-	m_SpinLock.Acquire ();
+	// m_SpinLock.Acquire ();
 
 	TPtrListElement *pElement = m_List.GetFirst ();
 	while (pElement != 0)
@@ -87,14 +87,14 @@ void CDWHCITransactionQueue::Flush (void)
 		pElement = m_List.GetFirst ();
 	}
 
-	m_SpinLock.Release ();
+	// m_SpinLock.Release ();
 }
 
 void CDWHCITransactionQueue::FlushDevice (CUSBDevice *pUSBDevice)
 {
 	assert (pUSBDevice != 0);
 
-	m_SpinLock.Acquire ();
+	// m_SpinLock.Acquire ();
 
 	TPtrListElement *pElement = m_List.GetFirst ();
 	while (pElement != 0)
@@ -125,7 +125,7 @@ void CDWHCITransactionQueue::FlushDevice (CUSBDevice *pUSBDevice)
 		pElement = pNextElement;
 	}
 
-	m_SpinLock.Release ();
+	// m_SpinLock.Release ();
 }
 
 void CDWHCITransactionQueue::Enqueue (CDWHCITransferStageData *pStageData, u16 usFrameNumber)
@@ -141,7 +141,7 @@ void CDWHCITransactionQueue::Enqueue (CDWHCITransferStageData *pStageData, u16 u
 	pEntry->pStageData    = pStageData;
 	pEntry->usFrameNumber = usFrameNumber;
 
-	m_SpinLock.Acquire ();
+	// m_SpinLock.Acquire ();
 
 	TPtrListElement *pPrevElement = 0;
 	TPtrListElement *pElement = m_List.GetFirst ();
@@ -169,17 +169,17 @@ void CDWHCITransactionQueue::Enqueue (CDWHCITransferStageData *pStageData, u16 u
 		m_List.InsertAfter (pPrevElement, pEntry);
 	}
 
-	m_SpinLock.Release ();
+	// m_SpinLock.Release ();
 }
 
 CDWHCITransferStageData *CDWHCITransactionQueue::Dequeue (u16 usFrameNumber)
 {
-	m_SpinLock.Acquire ();
+	// m_SpinLock.Acquire ();
 
 	TPtrListElement *pElement = m_List.GetFirst ();
 	if (pElement == 0)
 	{
-		m_SpinLock.Release ();
+		// m_SpinLock.Release ();
 
 		return 0;
 	}
@@ -190,14 +190,14 @@ CDWHCITransferStageData *CDWHCITransactionQueue::Dequeue (u16 usFrameNumber)
 
 	if (FrameNumberGreater (pEntry->usFrameNumber, usFrameNumber))
 	{
-		m_SpinLock.Release ();
+		// m_SpinLock.Release ();
 
 		return 0;
 	}
 
 	m_List.Remove (pElement);
 
-	m_SpinLock.Release ();
+	// m_SpinLock.Release ();
 
 	CDWHCITransferStageData *pStageData = pEntry->pStageData;
 	assert (pStageData != 0);

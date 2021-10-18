@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2021  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -23,9 +23,11 @@
 #include <circle/usb/dwhciframeschednsplit.h>
 #include <circle/usb/dwhci.h>
 #include <circle/usb/usbhostcontroller.h>
-#include <circle/logger.h>
-#include <circle/timer.h>
+// #include <circle/logger.h>
+// #include <circle/timer.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 #define MAX_BULK_TRIES		8
 
@@ -58,7 +60,7 @@ CDWHCITransferStageData::CDWHCITransferStageData (unsigned	 nChannel,
 
 	m_Speed = m_pDevice->GetSpeed ();
 	m_nMaxPacketSize = m_pEndpoint->GetMaxPacketSize ();
-	
+
 	m_bSplitTransaction = m_pDevice->IsSplit ();
 
 	if (!bStatusStage)
@@ -75,7 +77,7 @@ CDWHCITransferStageData::CDWHCITransferStageData (unsigned	 nChannel,
 		}
 
 		m_nPackets = (m_nTransferSize + m_nMaxPacketSize - 1) / m_nMaxPacketSize;
-		
+
 		if (m_bSplitTransaction)
 		{
 			if (m_nTransferSize > m_nMaxPacketSize)
@@ -86,7 +88,7 @@ CDWHCITransferStageData::CDWHCITransferStageData (unsigned	 nChannel,
 			{
 				m_nBytesPerTransaction = m_nTransferSize;
 			}
-			
+
 			m_nPacketsPerTransaction = 1;
 		}
 		else
@@ -140,7 +142,7 @@ CDWHCITransferStageData::CDWHCITransferStageData (unsigned	 nChannel,
 
 		m_nTimeoutHZ = MSEC2HZ (nTimeoutMs);
 		assert (m_nTimeoutHZ > 0);
-		m_nStartTicksHZ = CTimer::Get ()->GetTicks ();
+		m_nStartTicksHZ = GetClockTicks();
 	}
 }
 
@@ -211,10 +213,10 @@ void CDWHCITransferStageData::TransactionComplete (u32 nStatus, u32 nPacketsLeft
 	{
 		nBytesTransfered = m_nMaxPacketSize * nPacketsTransfered;
 	}
-	
+
 	m_nTotalBytesTransfered += nBytesTransfered;
 	m_pBufferPointer = (u8 *) m_pBufferPointer + nBytesTransfered;
-	
+
 	if (   !m_bSplitTransaction
 	    || m_bSplitComplete)
 	{
@@ -240,7 +242,7 @@ void CDWHCITransferStageData::TransactionComplete (u32 nStatus, u32 nPacketsLeft
 void CDWHCITransferStageData::SetSplitComplete (boolean bComplete)
 {
 	assert (m_bSplitTransaction);
-	
+
 	m_bSplitComplete = bComplete;
 }
 
@@ -278,7 +280,7 @@ boolean CDWHCITransferStageData::IsPeriodic (void) const
 {
 	assert (m_pEndpoint != 0);
 	TEndpointType Type = m_pEndpoint->GetType ();
-	
+
 	return    Type == EndpointTypeInterrupt
 	       || Type == EndpointTypeIsochronous;
 }
@@ -292,7 +294,7 @@ u8 CDWHCITransferStageData::GetDeviceAddress (void) const
 u8 CDWHCITransferStageData::GetEndpointType (void) const
 {
 	assert (m_pEndpoint != 0);
-	
+
 	unsigned nEndpointType = 0;
 
 	switch (m_pEndpoint->GetType ())
@@ -313,7 +315,7 @@ u8 CDWHCITransferStageData::GetEndpointType (void) const
 		assert (0);
 		break;
 	}
-	
+
 	return nEndpointType;
 }
 
@@ -336,9 +338,9 @@ TUSBSpeed CDWHCITransferStageData::GetSpeed (void) const
 u8 CDWHCITransferStageData::GetPID (void) const
 {
 	assert (m_pEndpoint != 0);
-	
+
 	u8 ucPID = 0;
-	
+
 	switch (m_pEndpoint->GetNextPID (m_bStatusStage))
 	{
 	case USBPIDSetup:
@@ -348,7 +350,7 @@ u8 CDWHCITransferStageData::GetPID (void) const
 	case USBPIDData0:
 		ucPID = DWHCI_HOST_CHAN_XFER_SIZ_PID_DATA0;
 		break;
-		
+
 	case USBPIDData1:
 		ucPID = DWHCI_HOST_CHAN_XFER_SIZ_PID_DATA1;
 		break;
@@ -357,7 +359,7 @@ u8 CDWHCITransferStageData::GetPID (void) const
 		assert (0);
 		break;
 	}
-	
+
 	return ucPID;
 }
 
@@ -396,7 +398,7 @@ boolean CDWHCITransferStageData::IsSplit (void) const
 boolean CDWHCITransferStageData::IsSplitComplete (void) const
 {
 	assert (m_bSplitTransaction);
-	
+
 	return m_bSplitComplete;
 }
 
@@ -427,7 +429,7 @@ u32 CDWHCITransferStageData::GetStatusMask (void) const
 	u32 nMask =   DWHCI_HOST_CHAN_INT_XFER_COMPLETE
 		    | DWHCI_HOST_CHAN_INT_HALTED
 		    | DWHCI_HOST_CHAN_INT_ERROR_MASK;
-		    
+
 	if (   m_bSplitTransaction
 	    || IsPeriodic ())
 	{
@@ -435,7 +437,7 @@ u32 CDWHCITransferStageData::GetStatusMask (void) const
 			 | DWHCI_HOST_CHAN_INT_NAK
 			 | DWHCI_HOST_CHAN_INT_NYET;
 	}
-	
+
 	return	nMask;
 }
 
@@ -491,7 +493,7 @@ u32 CDWHCITransferStageData::GetResultLen (void) const
 	{
 		return m_nTransferSize;
 	}
-	
+
 	return m_nTotalBytesTransfered;
 }
 
@@ -502,7 +504,7 @@ boolean CDWHCITransferStageData::IsTimeout (void) const
 		return FALSE;
 	}
 
-	return CTimer::Get ()->GetTicks ()-m_nStartTicksHZ >= m_nTimeoutHZ ? TRUE : FALSE;
+	return GetClockTicks()-m_nStartTicksHZ >= m_nTimeoutHZ ? TRUE : FALSE;
 }
 
 boolean CDWHCITransferStageData::IsRetryOK (void) const

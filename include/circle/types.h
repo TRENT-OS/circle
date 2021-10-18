@@ -20,6 +20,7 @@
 #ifndef _circle_types_h
 #define _circle_types_h
 
+#include <circle/sysconfig.h>
 #include <assert.h>
 
 typedef unsigned char		u8;

@@ -432,11 +432,11 @@ struct TXHCISlotContext
 }
 PACKED;
 
-#ifdef USE_XHCI_INTERNAL
-ASSERT_STATIC (sizeof (TXHCISlotContext) == 0x40);
-#else
-ASSERT_STATIC (sizeof (TXHCISlotContext) == 0x20);
-#endif
+// #ifdef USE_XHCI_INTERNAL
+// ASSERT_STATIC (sizeof (TXHCISlotContext) == 0x40);
+// #else
+// ASSERT_STATIC (sizeof (TXHCISlotContext) == 0x20);
+// #endif
 
 struct TXHCIEndpointContext
 {
@@ -477,11 +477,11 @@ struct TXHCIEndpointContext
 }
 PACKED;
 
-#ifdef USE_XHCI_INTERNAL
-ASSERT_STATIC (sizeof (TXHCIEndpointContext) == 0x40);
-#else
-ASSERT_STATIC (sizeof (TXHCIEndpointContext) == 0x20);
-#endif
+// #ifdef USE_XHCI_INTERNAL
+// ASSERT_STATIC (sizeof (TXHCIEndpointContext) == 0x40);
+// #else
+// ASSERT_STATIC (sizeof (TXHCIEndpointContext) == 0x20);
+// #endif
 
 struct TXHCIDeviceContext
 {
@@ -491,11 +491,11 @@ struct TXHCIDeviceContext
 }
 PACKED;
 
-#ifdef USE_XHCI_INTERNAL
-ASSERT_STATIC (sizeof (TXHCIDeviceContext) == 0x800);
-#else
-ASSERT_STATIC (sizeof (TXHCIDeviceContext) == 0x400);
-#endif
+// #ifdef USE_XHCI_INTERNAL
+// ASSERT_STATIC (sizeof (TXHCIDeviceContext) == 0x800);
+// #else
+// ASSERT_STATIC (sizeof (TXHCIDeviceContext) == 0x400);
+// #endif
 
 struct TXHCIInputControlContext
 {
@@ -509,11 +509,11 @@ struct TXHCIInputControlContext
 }
 PACKED;
 
-#ifdef USE_XHCI_INTERNAL
-ASSERT_STATIC (sizeof (TXHCIInputControlContext) == 0x40);
-#else
-ASSERT_STATIC (sizeof (TXHCIInputControlContext) == 0x20);
-#endif
+// #ifdef USE_XHCI_INTERNAL
+// ASSERT_STATIC (sizeof (TXHCIInputControlContext) == 0x40);
+// #else
+// ASSERT_STATIC (sizeof (TXHCIInputControlContext) == 0x20);
+// #endif
 
 struct TXHCIInputContext
 {
@@ -522,10 +522,10 @@ struct TXHCIInputContext
 }
 PACKED;
 
-#ifdef USE_XHCI_INTERNAL
-ASSERT_STATIC (sizeof (TXHCIInputContext) == 0x840);
-#else
-ASSERT_STATIC (sizeof (TXHCIInputContext) == 0x420);
-#endif
+// #ifdef USE_XHCI_INTERNAL
+// ASSERT_STATIC (sizeof (TXHCIInputContext) == 0x840);
+// #else
+// ASSERT_STATIC (sizeof (TXHCIInputContext) == 0x420);
+// #endif
 
 #endif

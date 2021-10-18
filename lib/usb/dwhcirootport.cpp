@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2020  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -19,8 +19,10 @@
 //
 #include <circle/usb/dwhcirootport.h>
 #include <circle/usb/dwhcidevice.h>
-#include <circle/logger.h>
+// #include <circle/logger.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 static const char FromDWHCIRoot[] = "dwroot";
 
@@ -45,11 +47,11 @@ boolean CDWHCIRootPort::Initialize (void)
 	TUSBSpeed Speed = m_pHost->GetPortSpeed ();
 	if (Speed == USBSpeedUnknown)
 	{
-		CLogger::Get ()->Write (FromDWHCIRoot, LogError, "Cannot detect port speed");
+		LogWrite (FromDWHCIRoot, CIRCLE_LOG_ERROR, "Cannot detect port speed");
 
 		return FALSE;
 	}
-	
+
 	// first create default device
 	assert (m_pDevice == 0);
 	m_pDevice = new CUSBDevice (m_pHost, Speed, this);
@@ -65,7 +67,7 @@ boolean CDWHCIRootPort::Initialize (void)
 
 	if (!m_pDevice->Configure ())
 	{
-		CLogger::Get ()->Write (FromDWHCIRoot, LogWarning, "Cannot configure device");
+		LogWrite (FromDWHCIRoot, CIRCLE_LOG_WARNING, "Cannot configure device");
 
 		delete m_pDevice;
 		m_pDevice = 0;
@@ -73,12 +75,12 @@ boolean CDWHCIRootPort::Initialize (void)
 		return FALSE;
 	}
 
-	CLogger::Get ()->Write (FromDWHCIRoot, LogDebug, "Device configured");
+	LogWrite (FromDWHCIRoot, CIRCLE_LOG_DEBUG, "Device configured");
 
 	// check for over-current
 	if (m_pHost->OvercurrentDetected ())
 	{
-		CLogger::Get ()->Write (FromDWHCIRoot, LogError, "Over-current condition");
+		LogWrite (FromDWHCIRoot, CIRCLE_LOG_ERROR, "Over-current condition");
 
 		m_pHost->DisableRootPort ();
 
@@ -95,7 +97,7 @@ boolean CDWHCIRootPort::ReScanDevices (void)
 {
 	if (m_pDevice == 0)
 	{
-		CLogger::Get ()->Write (FromDWHCIRoot, LogWarning,
+		LogWrite (FromDWHCIRoot, CIRCLE_LOG_WARNING,
 					"Previous attempt to initialize device failed");
 
 		return FALSE;

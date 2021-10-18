@@ -21,6 +21,9 @@
 #define _circle_bcm2835_h
 
 #include <circle/sysconfig.h>
+extern "C" {
+	#include <camkes.h>
+}
 
 #if RASPPI == 1
 #define ARM_IO_BASE		0x20000000
@@ -201,7 +204,8 @@
 //
 // USB Host Controller
 //
-#define ARM_USB_BASE		(ARM_IO_BASE + 0x980000)
+// #define ARM_USB_BASE		(ARM_IO_BASE + 0x980000)
+#define ARM_USB_BASE		((unsigned long)usbBaseReg)
 
 #define ARM_USB_CORE_BASE	ARM_USB_BASE
 #define ARM_USB_HOST_BASE	(ARM_USB_BASE + 0x400)

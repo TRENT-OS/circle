@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2021  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -19,8 +19,10 @@
 //
 #include <circle/usb/usbendpoint.h>
 #include <circle/sysconfig.h>
-#include <circle/logger.h>
+// #include <circle/logger.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 CUSBEndpoint::CUSBEndpoint (CUSBDevice *pDevice)
 :	m_pDevice (pDevice),
@@ -68,11 +70,11 @@ CUSBEndpoint::CUSBEndpoint (CUSBDevice *pDevice, const TUSBEndpointDescriptor *p
 		assert (0);	// endpoint configuration should be checked by function driver
 		return;
 	}
-	
+
 	m_ucNumber       = pDesc->bEndpointAddress & 0x0F;
 	m_bDirectionIn   = pDesc->bEndpointAddress & 0x80 ? TRUE : FALSE;
 	m_nMaxPacketSize = pDesc->wMaxPacketSize & 0x7FF;
-	
+
 #if RASPPI <= 3
 	if (m_Type == EndpointTypeInterrupt)
 	{
@@ -119,7 +121,7 @@ CUSBEndpoint::CUSBEndpoint (CUSBDevice *pDevice, const TUSBEndpointDescriptor *p
 	if (   m_pDevice->GetSpeed () == USBSpeedLow
 	    && m_Type == EndpointTypeBulk)
 	{
-		CLogger::Get ()->Write ("uep", LogWarning, "Device is not fully USB compliant");
+		LogWrite ("uep", CIRCLE_LOG_WARNING, "Device is not fully USB compliant");
 
 		m_Type = EndpointTypeInterrupt;
 
@@ -208,7 +210,7 @@ TUSBPID CUSBEndpoint::GetNextPID (boolean bStatusStage)
 
 		return USBPIDData1;
 	}
-	
+
 	return m_NextPID;
 }
 
@@ -217,7 +219,7 @@ void CUSBEndpoint::SkipPID (unsigned nPackets, boolean bStatusStage)
 	assert (   m_Type == EndpointTypeControl
 		|| m_Type == EndpointTypeBulk
 		|| m_Type == EndpointTypeInterrupt);
-	
+
 	if (!bStatusStage)
 	{
 		switch (m_NextPID)
@@ -232,7 +234,7 @@ void CUSBEndpoint::SkipPID (unsigned nPackets, boolean bStatusStage)
 				m_NextPID = USBPIDData1;
 			}
 			break;
-			
+
 		case USBPIDData1:
 			if (nPackets & 1)
 			{

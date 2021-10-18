@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2019  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -21,8 +21,10 @@
 #include <circle/usb/usbdevice.h>
 #include <circle/usb/usbhostcontroller.h>
 #include <circle/usb/usbendpoint.h>
-#include <circle/logger.h>
+// #include <circle/logger.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 static const char FromUSBFunction[] = "usbfct";
 
@@ -83,7 +85,7 @@ boolean CUSBFunction::Configure (void)
 						m_pInterfaceDesc->bAlternateSetting,
 						m_pInterfaceDesc->bInterfaceNumber, 0, 0) < 0)
 		{
-			CLogger::Get ()->Write (FromUSBFunction, LogError, "Cannot set interface");
+			LogWrite (FromUSBFunction, CIRCLE_LOG_ERROR, "Cannot set interface");
 
 			return FALSE;
 		}
