@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2021, HENSOLDT Cyber GmbH
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 //
 // bcm2711.h
 //
@@ -45,7 +50,8 @@
 //
 // BCM54213PE Gigabit Ethernet Transceiver (external)
 //
-#define ARM_BCM54213_BASE	0xFD580000
+// #define ARM_BCM54213_BASE	0xFD580000
+#define ARM_BCM54213_BASE	((uintptr_t)genetBaseReg)
 #define ARM_BCM54213_MDIO	(ARM_BCM54213_BASE + 0x0E14)
 #define ARM_BCM54213_MDIO_END	(ARM_BCM54213_BASE + 0x0E1B)
 #define ARM_BCM54213_END	(ARM_BCM54213_BASE + 0xFFFF)
