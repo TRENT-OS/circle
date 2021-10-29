@@ -1,4 +1,44 @@
-Change Log
+# Changelog (HENSOLDT Cyber)
+
+All notable changes by HENSOLDT Cyber GmbH to this 3rd party module included in
+the TRENTOS SDK will be documented in this file.
+
+For more details it is recommended to compare the 3rd party module at hand with
+the previous versions of the TRENTOS SDK or the baseline version.
+
+## [1.4]
+
+### Removed
+
+- Remove all submodules in the circle library in order to fix an issue in CI.
+- Deactivate conflicting includes/macros/functions by commenting them out or
+deleting them from the code altogether.
+- Some assembly instructions, e.g. msr/mrs, lead to user exceptions in seL4. As
+a result, the spinlock implementation of the circle library can not be used.
+There seems to be no spinlock implementation provided by seL4 and supporting
+libraries. Thus, spinlocks are commented out for now. It seems we don't need
+them so far.
+
+### Changed
+
+- Replace `malloc`/`free` with `dma_alloc`/`dma_free` wherever the allocated
+memory is used for DMA. These functions are defined inside `circleos.h` and are
+implemented alongside other environment functions.
+- Rename error codes from `LOG_ERROR` to `CIRCLE_LOG_ERROR` to avoid clashes
+with environment error codes and added more log output to make the internal
+states more understandable during runtime.
+- Use `TimeServer` component instead of bare-metal timer implementation in
+circle library.
+- Use mailbox interface from `libplatsupport` instead of bare-metal mailbox
+implementation in circle library.
+
+### Added
+
+- Start development based on commit da5825 of <https://github.com/rsta2/circle>.
+
+==========
+
+# Changelog (Circle)
 ==========
 
 > If you read this file in an editor you should switch line wrapping on.
