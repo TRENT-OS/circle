@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2017-2019  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -21,9 +21,11 @@
 #include <circle/usb/usbhostcontroller.h>
 #include <circle/usb/usbstring.h>
 #include <circle/usb/usb.h>
-#include <circle/logger.h>
+// #include <circle/logger.h>
 #include <circle/macros.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 struct TEthernetNetworkingFunctionalDescriptor
 {
@@ -100,14 +102,14 @@ boolean CUSBCDCEthernetDevice::Configure (void)
 	// init MAC address
 	if (!InitMACAddress (pEthernetDesc->iMACAddress))
 	{
-		CLogger::Get ()->Write (FromCDCEthernet, LogError, "Cannot get MAC address");
+        LogWrite(FromCDCEthernet, CIRCLE_LOG_ERROR, "Cannot get MAC address");
 
 		return FALSE;
 	}
 
 	CString MACString;
 	m_MACAddress.Format (&MACString);
-	CLogger::Get ()->Write (FromCDCEthernet, LogDebug, "MAC address is %s", (const char *) MACString);
+    LogWrite(FromCDCEthernet, CIRCLE_LOG_DEBUG, "MAC address is %s", (const char *) MACString);
 
 	// get endpoints
 	const TUSBEndpointDescriptor *pEndpointDesc;
@@ -150,7 +152,7 @@ boolean CUSBCDCEthernetDevice::Configure (void)
 
 	if (!CUSBFunction::Configure ())
 	{
-		CLogger::Get ()->Write (FromCDCEthernet, LogError, "Cannot set interface");
+        LogWrite(FromCDCEthernet, CIRCLE_LOG_ERROR, "Cannot set interface");
 
 		return FALSE;
 	}

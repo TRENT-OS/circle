@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2017  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -20,8 +20,10 @@
 #include <circle/usb/dwhciframeschedper.h>
 #include <circle/usb/dwhciregister.h>
 #include <circle/usb/dwhci.h>
-#include <circle/logger.h>
+// #include <circle/logger.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 #define uFRAME			125		// micro seconds
 
@@ -42,19 +44,18 @@ enum TFrameSchedulerState
 };
 
 CDWHCIFrameSchedulerPeriodic::CDWHCIFrameSchedulerPeriodic (void)
-:	m_pTimer (CTimer::Get ()),
-	m_nState (StateUnknown),
+:	m_nState (StateUnknown),
 #ifdef USE_USB_SOF_INTR
 	m_usFrameOffset (FRAME_UNSET),
 #endif
 	m_usNextFrame (FRAME_UNSET)
 {
-	assert (m_pTimer != 0);
+	// assert (m_pTimer != 0);
 }
 
 CDWHCIFrameSchedulerPeriodic::~CDWHCIFrameSchedulerPeriodic (void)
 {
-	m_pTimer = 0;
+	// m_pTimer = 0;
 
 	m_nState = StateUnknown;
 }
@@ -76,7 +77,7 @@ void CDWHCIFrameSchedulerPeriodic::StartSplit (void)
 boolean CDWHCIFrameSchedulerPeriodic::CompleteSplit (void)
 {
 	boolean bResult = FALSE;
-	
+
 	switch (m_nState)
 	{
 	case StateStartSplitComplete:
@@ -105,12 +106,12 @@ boolean CDWHCIFrameSchedulerPeriodic::CompleteSplit (void)
 	case StateCompleteSplitComplete:
 	case StateCompleteSplitFailed:
 		break;
-		
+
 	default:
 		assert (0);
 		break;
 	}
-	
+
 	return bResult;
 }
 
@@ -136,7 +137,7 @@ void CDWHCIFrameSchedulerPeriodic::TransactionComplete (u32 nStatus)
 				m_nState = StateCompleteSplitFailed;
 
 #ifndef USE_USB_SOF_INTR
-				m_pTimer->usDelay (8 * uFRAME);
+                usDelay(8 * uFRAME);
 #else
 				m_usFrameOffset = 3;
 #endif
@@ -149,7 +150,7 @@ void CDWHCIFrameSchedulerPeriodic::TransactionComplete (u32 nStatus)
 		else if (nStatus & DWHCI_HOST_CHAN_INT_NAK)
 		{
 #ifndef USE_USB_SOF_INTR
-			m_pTimer->usDelay (5 * uFRAME);
+            usDelay(5 * uFRAME);
 #else
 			m_usFrameOffset = 5;
 #endif
@@ -157,11 +158,11 @@ void CDWHCIFrameSchedulerPeriodic::TransactionComplete (u32 nStatus)
 		}
 		else
 		{
-			CLogger::Get ()->Write ("dwsched", LogError, "Invalid status 0x%X", nStatus);
+            LogWrite("dwsched", CIRCLE_LOG_ERROR, "Invalid status 0x%X", nStatus);
 			assert (0);
 		}
 		break;
-		
+
 	default:
 		assert (0);
 		break;

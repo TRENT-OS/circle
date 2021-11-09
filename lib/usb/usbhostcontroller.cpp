@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2020  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -20,8 +20,10 @@
 #include <circle/usb/usbhostcontroller.h>
 #include <circle/usb/usbhcirootport.h>
 #include <circle/usb/usbstandardhub.h>
-#include <circle/timer.h>
+// #include <circle/timer.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 struct TPortStatusEvent
 {
@@ -50,8 +52,8 @@ CUSBHostController::~CUSBHostController (void)
 {
 	s_pThis = 0;
 }
-	
-int CUSBHostController::GetDescriptor (CUSBEndpoint	*pEndpoint, 
+
+int CUSBHostController::GetDescriptor (CUSBEndpoint	*pEndpoint,
 				       unsigned char	 ucType,
 				       unsigned char	 ucIndex,
 				       void		*pBuffer,
@@ -71,9 +73,9 @@ boolean CUSBHostController::SetAddress (CUSBEndpoint *pEndpoint, u8 ucDeviceAddr
 	{
 		return FALSE;
 	}
-	
-	CTimer::Get ()->MsDelay (50);		// see USB 2.0 spec (tDSETADDR)
-	
+
+    MsDelay(50);		// see USB 2.0 spec (tDSETADDR)
+
 	return TRUE;
 }
 
@@ -83,9 +85,9 @@ boolean CUSBHostController::SetConfiguration (CUSBEndpoint *pEndpoint, u8 ucConf
 	{
 		return FALSE;
 	}
-	
-	CTimer::Get ()->MsDelay (50);
-	
+
+    MsDelay(50);
+
 	return TRUE;
 }
 
@@ -111,7 +113,7 @@ int CUSBHostController::ControlMessage (CUSBEndpoint *pEndpoint,
 	{
 		nResult = URB.GetResultLength ();
 	}
-	
+
 	delete pSetup;
 
 	return nResult;
@@ -142,7 +144,7 @@ boolean CUSBHostController::UpdatePlugAndPlay (void)
 	boolean bResult = m_bFirstUpdateCall;
 	m_bFirstUpdateCall = FALSE;
 
-	m_SpinLock.Acquire ();
+	// m_SpinLock.Acquire ();
 
 	TPtrListElement *pElement;
 	while ((pElement  = m_HubList.GetFirst ()) != 0)
@@ -151,7 +153,7 @@ boolean CUSBHostController::UpdatePlugAndPlay (void)
 
 		m_HubList.Remove (pElement);
 
-		m_SpinLock.Release ();
+		// m_SpinLock.Release ();
 
 		assert (pEvent != 0);
 		if (pEvent->bFromRootPort)
@@ -169,10 +171,10 @@ boolean CUSBHostController::UpdatePlugAndPlay (void)
 
 		bResult = TRUE;
 
-		m_SpinLock.Acquire ();
+		// m_SpinLock.Acquire ();
 	}
 
-	m_SpinLock.Release ();
+	// m_SpinLock.Release ();
 
 	return bResult;
 }
@@ -187,7 +189,7 @@ void CUSBHostController::PortStatusChanged (CUSBHCIRootPort *pRootPort)
 	pEvent->bFromRootPort = TRUE;
 	pEvent->pRootPort = pRootPort;
 
-	m_SpinLock.Acquire ();
+	// m_SpinLock.Acquire ();
 
 	TPtrListElement *pPrevElement = 0;
 	TPtrListElement *pElement = m_HubList.GetFirst ();
@@ -199,7 +201,7 @@ void CUSBHostController::PortStatusChanged (CUSBHCIRootPort *pRootPort)
 
 	m_HubList.InsertAfter (pPrevElement, pEvent);		// append to list
 
-	m_SpinLock.Release ();
+	// m_SpinLock.Release ();
 }
 
 void CUSBHostController::PortStatusChanged (CUSBStandardHub *pHub)
@@ -212,7 +214,7 @@ void CUSBHostController::PortStatusChanged (CUSBStandardHub *pHub)
 	pEvent->bFromRootPort = FALSE;
 	pEvent->pHub = pHub;
 
-	m_SpinLock.Acquire ();
+	// m_SpinLock.Acquire ();
 
 	TPtrListElement *pPrevElement = 0;
 	TPtrListElement *pElement = m_HubList.GetFirst ();
@@ -224,7 +226,7 @@ void CUSBHostController::PortStatusChanged (CUSBStandardHub *pHub)
 
 	m_HubList.InsertAfter (pPrevElement, pEvent);		// append to list
 
-	m_SpinLock.Release ();
+	// m_SpinLock.Release ();
 }
 
 CUSBHostController *CUSBHostController::Get (void)

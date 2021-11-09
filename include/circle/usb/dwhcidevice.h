@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2020  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -40,8 +40,7 @@
 class CDWHCIDevice : public CUSBHostController
 {
 public:
-	CDWHCIDevice (CInterruptSystem *pInterruptSystem, CTimer *pTimer,
-		      boolean bPlugAndPlay = FALSE);
+	CDWHCIDevice (boolean bPlugAndPlay = FALSE);
 	~CDWHCIDevice (void);
 
 	boolean Initialize (boolean bScanDevices = TRUE);
@@ -53,6 +52,7 @@ public:
 
 	void CancelDeviceTransactions (CUSBDevice *pUSBDevice);
 
+	void InterruptHandler (void);
 private:
 	boolean DeviceConnected (void);
 	TUSBSpeed GetPortSpeed (void);
@@ -97,7 +97,7 @@ private:
 #ifdef USE_USB_SOF_INTR
 	void SOFInterruptHandler (void);
 #endif
-	void InterruptHandler (void);
+	// void InterruptHandler (void);
 	static void InterruptStub (void *pParam);
 
 #ifndef USE_USB_SOF_INTR
@@ -115,12 +115,12 @@ private:
 			    u32		    nMask,
 			    boolean	    bWaitUntilSet,
 			    unsigned	    nMsTimeout);
-	
+
 #ifndef NDEBUG
 	void DumpRegister (const char *pName, u32 nAddress);
 	void DumpStatus (unsigned nChannel = 0);
 #endif
-	
+
 private:
 	CInterruptSystem *m_pInterruptSystem;
 	CTimer *m_pTimer;

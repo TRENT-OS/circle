@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2021  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -16,11 +16,13 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-// 
+//
 #include <circle/koptions.h>
-#include <circle/logger.h>
+// #include <circle/logger.h>
 #include <circle/util.h>
 #include <circle/sysconfig.h>
+
+#include <circleos.h>
 
 #define INVALID_VALUE	((unsigned) -1)
 
@@ -29,7 +31,7 @@ CKernelOptions *CKernelOptions::s_pThis = 0;
 CKernelOptions::CKernelOptions (void)
 :	m_nWidth (0),
 	m_nHeight (0),
-	m_nLogLevel (LogDebug),
+	m_nLogLevel (CIRCLE_LOG_DEBUG),
 	m_nUSBPowerDelay (0),
 	m_bUSBFullSpeed (FALSE),
 	m_nSoundOption (0),
@@ -42,19 +44,27 @@ CKernelOptions::CKernelOptions (void)
 
 	s_pThis = this;
 
-	CBcmPropertyTags Tags;
-	if (!Tags.GetTag (PROPTAG_GET_COMMAND_LINE, &m_TagCommandLine, sizeof m_TagCommandLine))
-	{
-		return;
-	}
+    // TODO: implement in mailbox interface
+	// CBcmPropertyTags Tags;
+	// if (!Tags.GetTag (PROPTAG_GET_COMMAND_LINE, &m_TagCommandLine, sizeof m_TagCommandLine))
+	// {
+	// 	return;
+	// }
 
-	if (m_TagCommandLine.Tag.nValueLength >= sizeof m_TagCommandLine.String)
-	{
-		return;
-	}
-	m_TagCommandLine.String[m_TagCommandLine.Tag.nValueLength] = '\0';
-	
-	m_pOptions = (char *) m_TagCommandLine.String;
+	// if (m_TagCommandLine.Tag.nValueLength >= sizeof m_TagCommandLine.String)
+	// {
+	// 	return;
+	// }
+	// m_TagCommandLine.String[m_TagCommandLine.Tag.nValueLength] = '\0';
+	// m_pOptions = (char *) m_TagCommandLine.String;
+
+    unsigned char buffer[2048];
+    int ret = GetCMDLine(buffer);
+    if(!ret) {
+        LogWrite("koptions", CIRCLE_LOG_ERROR,"GetCMDLine failed!");
+        return;
+    }
+	m_pOptions = (char *) buffer;
 
 	char *pOption;
 	while ((pOption = GetToken ()) != 0)
@@ -86,7 +96,7 @@ CKernelOptions::CKernelOptions (void)
 		{
 			unsigned nValue;
 			if (   (nValue = GetDecimal (pValue)) != INVALID_VALUE
-			    && nValue <= LogDebug)
+			    && nValue <= CIRCLE_LOG_DEBUG)
 			{
 				m_nLogLevel = nValue;
 			}

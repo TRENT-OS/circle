@@ -26,9 +26,11 @@
 #include <circle/usb/usbhostcontroller.h>
 #include <circle/bcmpropertytags.h>
 #include <circle/synchronize.h>
-#include <circle/logger.h>
+// #include <circle/logger.h>
 #include <circle/util.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 // Sizes
 #define HS_USB_PKT_SIZE			512
@@ -296,7 +298,7 @@ boolean CLAN7800Device::Configure (void)
 
 	if (!CUSBFunction::Configure ())
 	{
-		CLogger::Get ()->Write (FromLAN7800, LogError, "Cannot set interface");
+        LogWrite(FromLAN7800, CIRCLE_LOG_ERROR, "Cannot set interface");
 
 		return FALSE;
 	}
@@ -307,7 +309,7 @@ boolean CLAN7800Device::Configure (void)
 	if (   !ReadReg (ID_REV, &nValue)
 	    || (nValue & ID_REV_CHIP_ID_MASK) >> 16 != ID_REV_CHIP_ID_7800)
 	{
-		CLogger::Get ()->Write (FromLAN7800, LogError, "Invalid chip ID (0x%X)",
+        LogWrite(FromLAN7800, CIRCLE_LOG_ERROR, "Invalid chip ID (0x%X)",
 					(nValue & ID_REV_CHIP_ID_MASK) >> 16);
 
 		return FALSE;
@@ -319,14 +321,14 @@ boolean CLAN7800Device::Configure (void)
 	if (   !ReadWriteReg (HW_CFG, HW_CFG_LRST)
 	    || !WaitReg (HW_CFG, HW_CFG_LRST))
 	{
-		CLogger::Get ()->Write (FromLAN7800, LogError, "HW reset failed");
+        LogWrite(FromLAN7800, CIRCLE_LOG_ERROR, "HW reset failed");
 
 		return FALSE;
 	}
 
 	if (!InitMACAddress ())
 	{
-		CLogger::Get ()->Write (FromLAN7800, LogError, "Cannot init MAC address");
+        LogWrite(FromLAN7800, CIRCLE_LOG_ERROR, "Cannot init MAC address");
 
 		return FALSE;
 	}
@@ -380,7 +382,7 @@ boolean CLAN7800Device::Configure (void)
 	if (   !ReadWriteReg (PMT_CTL, PMT_CTL_PHY_RST)
 	    || !WaitReg (PMT_CTL, PMT_CTL_PHY_RST | PMT_CTL_READY, PMT_CTL_READY))
 	{
-		CLogger::Get ()->Write (FromLAN7800, LogError, "PHY reset failed");
+        LogWrite(FromLAN7800, CIRCLE_LOG_ERROR, "PHY reset failed");
 
 		return FALSE;
 	}
@@ -409,7 +411,7 @@ boolean CLAN7800Device::Configure (void)
 
 	if (!InitPHY ())
 	{
-		CLogger::Get ()->Write (FromLAN7800, LogError, "Cannot init PHY");
+        LogWrite(FromLAN7800, CIRCLE_LOG_ERROR, "Cannot init PHY");
 
 		return FALSE;
 	}
@@ -419,10 +421,10 @@ boolean CLAN7800Device::Configure (void)
 	return TRUE;
 }
 
-const CMACAddress *CLAN7800Device::GetMACAddress (void) const
-{
-	return &m_MACAddress;
-}
+// const CMACAddress *CLAN7800Device::GetMACAddress (void) const
+// {
+// 	return &m_MACAddress;
+// }
 
 boolean CLAN7800Device::SendFrame (const void *pBuffer, unsigned nLength)
 {
@@ -438,7 +440,7 @@ boolean CLAN7800Device::SendFrame (const void *pBuffer, unsigned nLength)
 	u32 *pTxHeader = (u32 *) TxBuffer;
 	pTxHeader[0] = (nLength & TX_CMD_A_LEN_MASK) | TX_CMD_A_FCS;
 	pTxHeader[1] = 0;
-	
+
 	assert (m_pEndpointBulkOut != 0);
 	return GetHost ()->Transfer (m_pEndpointBulkOut, TxBuffer, nLength+TX_HEADER_SIZE) >= 0;
 }
@@ -463,11 +465,11 @@ boolean CLAN7800Device::ReceiveFrame (void *pBuffer, unsigned *pResultLength)
 	u32 nRxStatus = *(u32 *) pBuffer;	// RX command A
 	if (nRxStatus & RX_CMD_A_RED)
 	{
-		CLogger::Get ()->Write (FromLAN7800, LogWarning, "RX error (status 0x%X)", nRxStatus);
+        LogWrite(FromLAN7800, CIRCLE_LOG_WARNING, "RX error (status 0x%X)", nRxStatus);
 
 		return FALSE;
 	}
-	
+
 	u32 nFrameLength = nRxStatus & RX_CMD_A_LEN_MASK;
 	assert (nFrameLength == nResultLength-RX_HEADER_SIZE);
 	assert (nFrameLength > 4);
@@ -483,7 +485,7 @@ boolean CLAN7800Device::ReceiveFrame (void *pBuffer, unsigned *pResultLength)
 
 	assert (pResultLength != 0);
 	*pResultLength = nFrameLength;
-	
+
 	return TRUE;
 }
 
@@ -533,21 +535,20 @@ TNetDeviceSpeed CLAN7800Device::GetLinkSpeed (void)
 
 boolean CLAN7800Device::InitMACAddress (void)
 {
-	CBcmPropertyTags Tags;
-	TPropertyTagMACAddress MACAddress;
-	if (!Tags.GetTag (PROPTAG_GET_MAC_ADDRESS, &MACAddress, sizeof MACAddress))
-	{
+    unsigned char address[6];
+	int ret = GetMACAddress(address);
+	if (!ret) {
+        LogWrite(FromLAN7800, CIRCLE_LOG_ERROR, "GetMACAddress failed!");
 		return FALSE;
 	}
+	m_MACAddress.Set (address);
 
-	m_MACAddress.Set (MACAddress.Address);
-
-	u32 nMACAddressLow =    (u32) MACAddress.Address[0]
-			     | ((u32) MACAddress.Address[1] << 8)
-			     | ((u32) MACAddress.Address[2] << 16)
-			     | ((u32) MACAddress.Address[3] << 24);
-	u32 nMACAddressHigh =    (u32) MACAddress.Address[4]
-			      | ((u32) MACAddress.Address[5] << 8);
+	u32 nMACAddressLow =    (u32) address[0]
+			     | ((u32) address[1] << 8)
+			     | ((u32) address[2] << 16)
+			     | ((u32) address[3] << 24);
+	u32 nMACAddressHigh =    (u32) address[4]
+			      | ((u32) address[5] << 8);
 
 	if (   !WriteReg (RX_ADDRL, nMACAddressLow)
 	    || !WriteReg (RX_ADDRH, nMACAddressHigh))
@@ -564,7 +565,7 @@ boolean CLAN7800Device::InitMACAddress (void)
 
 	CString MACString;
 	m_MACAddress.Format (&MACString);
-	CLogger::Get ()->Write (FromLAN7800, LogDebug, "MAC address is %s", (const char *) MACString);
+    LogWrite(FromLAN7800, CIRCLE_LOG_DEBUG, "MAC address is %s", (const char *) MACString);
 
 	return TRUE;
 }
@@ -651,20 +652,20 @@ boolean CLAN7800Device::PHYRead (u8 uchIndex, u16 *pValue)
 boolean CLAN7800Device::WaitReg (u32 nIndex, u32 nMask, u32 nCompare,
 				 unsigned nDelayMicros, unsigned nTimeoutHZ)
 {
-	CTimer *pTimer = CTimer::Get ();
-	assert (pTimer != 0);
+	// CTimer *pTimer = CTimer::Get ();
+	// assert (pTimer != 0);
 
-	unsigned nStartTicks = pTimer->GetTicks ();
+	unsigned nStartTicks = GetClockTicks();
 
 	u32 nValue;
 	do
 	{
 		if (nDelayMicros > 0)
 		{
-			pTimer->usDelay (nDelayMicros);
+            usDelay(nDelayMicros);
 		}
 
-		if (pTimer->GetTicks () - nStartTicks >= nTimeoutHZ)
+		if (GetClockTicks() - nStartTicks >= nTimeoutHZ)
 		{
 			return FALSE;
 		}
@@ -699,7 +700,7 @@ boolean CLAN7800Device::WriteReg (u32 nIndex, u32 nValue)
 					REQUEST_OUT | REQUEST_VENDOR, WRITE_REGISTER,
 					0, nIndex, &nValue, sizeof nValue) < 0)
 	{
-		CLogger::Get ()->Write (FromLAN7800, LogWarning, "Cannot write register 0x%X", nIndex);
+        LogWrite(FromLAN7800, CIRCLE_LOG_WARNING, "Cannot write register 0x%X", nIndex);
 
 		return FALSE;
 	}
@@ -713,7 +714,7 @@ boolean CLAN7800Device::ReadReg (u32 nIndex, u32 *pValue)
 					REQUEST_IN | REQUEST_VENDOR, READ_REGISTER,
 					0, nIndex, pValue, sizeof *pValue) != (int) sizeof *pValue)
 	{
-		CLogger::Get ()->Write (FromLAN7800, LogWarning, "Cannot read register 0x%X", nIndex);
+        LogWrite(FromLAN7800, CIRCLE_LOG_WARNING, "Cannot read register 0x%X", nIndex);
 
 		return FALSE;
 	}

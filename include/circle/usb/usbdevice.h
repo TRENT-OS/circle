@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2020  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -49,7 +49,7 @@ public:
 	CUSBDevice (CUSBHostController *pHost, TUSBSpeed Speed,
 		    CUSBStandardHub *pHub, unsigned nHubPortIndex);
 	virtual ~CUSBDevice (void);
-	
+
 	virtual boolean Initialize (void);	// onto address state (phase 1)
 	virtual boolean Configure (void);	// onto configured state (phase 2)
 
@@ -69,7 +69,7 @@ public:
 
 	CUSBEndpoint *GetEndpoint0 (void) const;
 	CUSBHostController *GetHost (void) const;
-	
+
 	const TUSBDeviceDescriptor *GetDeviceDescriptor (void) const;
 	const TUSBConfigurationDescriptor *GetConfigurationDescriptor (void) const; // default config
 
@@ -77,7 +77,7 @@ public:
 	const TUSBDescriptor *GetDescriptor (u8 ucType);	// returns 0 if not found
 	void ConfigurationError (const char *pSource) const;
 
-	void LogWrite (TLogSeverity Severity, const char *pMessage, ...);
+	// void LogWrite (TLogSeverity Severity, const char *pMessage, ...);
 
 #if RASPPI >= 4
 	virtual boolean EnableHubFunction (void) = 0;

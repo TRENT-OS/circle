@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2019  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -35,13 +35,13 @@ public:
 
 	boolean Configure (void);
 
-	const CMACAddress *GetMACAddress (void) const;
+	// const CMACAddress *GetMACAddress (void) const;
 
 	boolean SendFrame (const void *pBuffer, unsigned nLength);
-	
+
 	// pBuffer must have size FRAME_BUFFER_SIZE
 	boolean ReceiveFrame (void *pBuffer, unsigned *pResultLength);
-	
+
 	// returns TRUE if PHY link is up
 	boolean IsLinkUp (void);
 

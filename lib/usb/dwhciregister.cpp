@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -19,8 +19,10 @@
 //
 #include <circle/usb/dwhciregister.h>
 #include <circle/memio.h>
-#include <circle/logger.h>
+// #include <circle/logger.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 CDWHCIRegister::CDWHCIRegister (u32 nAddress)
 :	m_bValid (FALSE),
@@ -44,7 +46,7 @@ u32 CDWHCIRegister::Read (void)
 {
 	m_nBuffer = read32 (m_nAddress);
 	m_bValid = TRUE;
-	
+
 	return m_nBuffer;
 }
 
@@ -116,13 +118,13 @@ void CDWHCIRegister::Dump (void) const
 {
 	if (m_bValid)
 	{
-		CLogger::Get ()->Write ("dwhci", LogDebug,
+        LogWrite("dwhci", CIRCLE_LOG_DEBUG,
 					"Register at 0x%X is 0x%X",
 					m_nAddress & 0xFFF, m_nBuffer);
 	}
 	else
 	{
-		CLogger::Get ()->Write ("dwhci", LogDebug,
+        LogWrite("dwhci", CIRCLE_LOG_DEBUG,
 					"Register at 0x%X was not set",
 					m_nAddress & 0xFFF);
 	}

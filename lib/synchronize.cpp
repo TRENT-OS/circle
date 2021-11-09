@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2020  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -49,7 +49,7 @@ static volatile u32 s_nCPSR[CORES][MAX_CRITICAL_LEVEL];
 
 void EnterCritical (unsigned nTargetLevel)
 {
-	assert (nTargetLevel == IRQ_LEVEL || nTargetLevel == FIQ_LEVEL);
+	// assert (nTargetLevel == IRQ_LEVEL || nTargetLevel == FIQ_LEVEL);
 
 	u32 nMPIDR;
 	asm volatile ("mrc p15, 0, %0, c0, c0, 5" : "=r" (nMPIDR));
@@ -59,11 +59,11 @@ void EnterCritical (unsigned nTargetLevel)
 	asm volatile ("mrs %0, cpsr" : "=r" (nCPSR));
 
 	// if we are already on FIQ_LEVEL, we must not go back to IRQ_LEVEL here
-	assert (nTargetLevel == FIQ_LEVEL || !(nCPSR & 0x40));
+	// assert (nTargetLevel == FIQ_LEVEL || !(nCPSR & 0x40));
 
 	asm volatile ("cpsid if");	// disable both IRQ and FIQ
 
-	assert (s_nCriticalLevel[nCore] < MAX_CRITICAL_LEVEL);
+	// assert (s_nCriticalLevel[nCore] < MAX_CRITICAL_LEVEL);
 	s_nCPSR[nCore][s_nCriticalLevel[nCore]++] = nCPSR;
 
 	if (nTargetLevel == IRQ_LEVEL)
@@ -84,7 +84,7 @@ void LeaveCritical (void)
 
 	DisableFIQs ();
 
-	assert (s_nCriticalLevel[nCore] > 0);
+	// assert (s_nCriticalLevel[nCore] > 0);
 	u32 nCPSR = s_nCPSR[nCore][--s_nCriticalLevel[nCore]];
 
 	asm volatile ("msr cpsr_c, %0" :: "r" (nCPSR));
@@ -97,17 +97,17 @@ static volatile u32 s_nCPSR[MAX_CRITICAL_LEVEL];
 
 void EnterCritical (unsigned nTargetLevel)
 {
-	assert (nTargetLevel == IRQ_LEVEL || nTargetLevel == FIQ_LEVEL);
+	// assert (nTargetLevel == IRQ_LEVEL || nTargetLevel == FIQ_LEVEL);
 
 	u32 nCPSR;
 	asm volatile ("mrs %0, cpsr" : "=r" (nCPSR));
 
 	// if we are already on FIQ_LEVEL, we must not go back to IRQ_LEVEL here
-	assert (nTargetLevel == FIQ_LEVEL || !(nCPSR & 0x40));
+	// assert (nTargetLevel == FIQ_LEVEL || !(nCPSR & 0x40));
 
 	asm volatile ("cpsid if");	// disable both IRQ and FIQ
 
-	assert (s_nCriticalLevel < MAX_CRITICAL_LEVEL);
+	// assert (s_nCriticalLevel < MAX_CRITICAL_LEVEL);
 	s_nCPSR[s_nCriticalLevel++] = nCPSR;
 
 	if (nTargetLevel == IRQ_LEVEL)
@@ -124,7 +124,7 @@ void LeaveCritical (void)
 
 	DisableFIQs ();
 
-	assert (s_nCriticalLevel > 0);
+	// assert (s_nCriticalLevel > 0);
 	u32 nCPSR = s_nCPSR[--s_nCriticalLevel];
 
 	asm volatile ("msr cpsr_c, %0" :: "r" (nCPSR));
@@ -164,7 +164,7 @@ void CleanAndInvalidateDataCacheRange (u32 nAddress, u32 nLength)
 // ARMv7 ARM A3.5.4
 void SyncDataAndInstructionCache (void)
 {
-	CleanDataCache ();
+	// CleanDataCache ();
 	//DataSyncBarrier ();		// included in CleanDataCache()
 
 	InvalidateInstructionCache ();

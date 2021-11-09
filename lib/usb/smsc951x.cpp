@@ -10,7 +10,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2020  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -28,12 +28,14 @@
 #include <circle/usb/usbhostcontroller.h>
 #include <circle/bcmpropertytags.h>
 #include <circle/synchronize.h>
-#include <circle/logger.h>
-#include <circle/timer.h>
+// #include <circle/logger.h>
+// #include <circle/timer.h>
 #include <circle/util.h>
 #include <circle/macros.h>
 #include <circle/debug.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 // USB vendor requests
 #define WRITE_REGISTER			0xA0
@@ -144,21 +146,17 @@ CSMSC951xDevice::~CSMSC951xDevice (void)
 
 boolean CSMSC951xDevice::Configure (void)
 {
-	CBcmPropertyTags Tags;
-	TPropertyTagMACAddress MACAddress;
-	if (Tags.GetTag (PROPTAG_GET_MAC_ADDRESS, &MACAddress, sizeof MACAddress))
-	{
-		m_MACAddress.Set (MACAddress.Address);
-	}
-	else
-	{
-		CLogger::Get ()->Write (FromSMSC951x, LogError, "Cannot get MAC address");
-
+    unsigned char address[6];
+	int ret = GetMACAddress(address);
+	if (!ret) {
+        LogWrite(FromSMSC951x, CIRCLE_LOG_ERROR, "GetMACAddress failed!");
 		return FALSE;
 	}
-	CString MACString;
+	m_MACAddress.Set (address);
+
+    CString MACString;
 	m_MACAddress.Format (&MACString);
-	CLogger::Get ()->Write (FromSMSC951x, LogDebug, "MAC address is %s", (const char *) MACString);
+    LogWrite(FromSMSC951x, CIRCLE_LOG_DEBUG, "MAC address is %s", (const char *) MACString);
 
 	if (GetNumEndpoints () != 3)
 	{
@@ -207,7 +205,7 @@ boolean CSMSC951xDevice::Configure (void)
 
 	if (!CUSBFunction::Configure ())
 	{
-		CLogger::Get ()->Write (FromSMSC951x, LogError, "Cannot set interface");
+        LogWrite(FromSMSC951x, CIRCLE_LOG_ERROR, "Cannot set interface");
 
 		return FALSE;
 	}
@@ -223,7 +221,7 @@ boolean CSMSC951xDevice::Configure (void)
 	if (   !WriteReg (ADDRH, usMACAddressHigh)
 	    || !WriteReg (ADDRL, nMACAddressLow))
 	{
-		CLogger::Get ()->Write (FromSMSC951x, LogError, "Cannot set MAC address");
+        LogWrite(FromSMSC951x, CIRCLE_LOG_ERROR, "Cannot set MAC address");
 
 		return FALSE;
 	}
@@ -237,7 +235,7 @@ boolean CSMSC951xDevice::Configure (void)
 				 | MAC_CR_RXEN)
 	    || !WriteReg (TX_CFG, TX_CFG_ON))
 	{
-		CLogger::Get ()->Write (FromSMSC951x, LogError, "Cannot start device");
+        LogWrite(FromSMSC951x, CIRCLE_LOG_ERROR, "Cannot start device");
 
 		return FALSE;
 	}
@@ -247,10 +245,10 @@ boolean CSMSC951xDevice::Configure (void)
 	return TRUE;
 }
 
-const CMACAddress *CSMSC951xDevice::GetMACAddress (void) const
-{
-	return &m_MACAddress;
-}
+// const CMACAddress *CSMSC951xDevice::GetMACAddress (void) const
+// {
+// 	return &m_MACAddress;
+// }
 
 boolean CSMSC951xDevice::SendFrame (const void *pBuffer, unsigned nLength)
 {
@@ -266,7 +264,7 @@ boolean CSMSC951xDevice::SendFrame (const void *pBuffer, unsigned nLength)
 	u32 *pTxHeader = (u32 *) TxBuffer;
 	pTxHeader[0] = TX_CMD_A_FIRST_SEG | TX_CMD_A_LAST_SEG | nLength;
 	pTxHeader[1] = nLength;
-	
+
 	assert (m_pEndpointBulkOut != 0);
 	return GetHost ()->Transfer (m_pEndpointBulkOut, TxBuffer, nLength+8) >= 0;
 }
@@ -291,11 +289,11 @@ boolean CSMSC951xDevice::ReceiveFrame (void *pBuffer, unsigned *pResultLength)
 	u32 nRxStatus = *(u32 *) pBuffer;
 	if (nRxStatus & RX_STS_ERROR)
 	{
-		CLogger::Get ()->Write (FromSMSC951x, LogWarning, "RX error (status 0x%X)", nRxStatus);
+        LogWrite(FromSMSC951x, CIRCLE_LOG_WARNING, "RX error (status 0x%X)", nRxStatus);
 
 		return FALSE;
 	}
-	
+
 	u32 nFrameLength = RX_STS_FRAMELEN (nRxStatus);
 	assert (nFrameLength == nResultLength-4);
 	assert (nFrameLength > 4);
@@ -311,7 +309,7 @@ boolean CSMSC951xDevice::ReceiveFrame (void *pBuffer, unsigned *pResultLength)
 
 	assert (pResultLength != 0);
 	*pResultLength = nFrameLength;
-	
+
 	return TRUE;
 }
 
@@ -395,15 +393,15 @@ boolean CSMSC951xDevice::PHYRead (u8 uchIndex, u16 *pValue)
 
 boolean CSMSC951xDevice::PHYWaitNotBusy (void)
 {
-	CTimer *pTimer = CTimer::Get ();
-	assert (pTimer != 0);
+	// CTimer *pTimer = CTimer::Get ();
+	// assert (pTimer != 0);
 
-	unsigned nStartTicks = pTimer->GetTicks ();
+	unsigned nStartTicks = GetClockTicks();
 
 	u32 nValue;
 	do
 	{
-		if (pTimer->GetTicks () - nStartTicks >= HZ)
+		if (GetClockTicks() - nStartTicks >= HZ)
 		{
 			return FALSE;
 		}
@@ -439,12 +437,12 @@ void CSMSC951xDevice::DumpReg (const char *pName, u32 nIndex)
 	u32 nValue;
 	if (!ReadReg (nIndex, &nValue))
 	{
-		CLogger::Get ()->Write (FromSMSC951x, LogError, "Cannot read register 0x%X", nIndex);
+        LogWrite(FromSMSC951x, CIRCLE_LOG_ERROR, "Cannot read register 0x%X", nIndex);
 
 		return;
 	}
 
-	CLogger::Get ()->Write (FromSMSC951x, LogDebug, "%08X %s", nValue, pName);
+    LogWrite(FromSMSC951x, CIRCLE_LOG_DEBUG, "%08X %s", nValue, pName);
 }
 
 void CSMSC951xDevice::DumpRegs (void)

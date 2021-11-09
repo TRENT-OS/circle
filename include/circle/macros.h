@@ -28,6 +28,7 @@
 /* Some macros are commented out since there is a conflict with the defines in
 the seL4 kernel and supporting libraries. */
 #include <utils/attribute.h>
+#include <utils/arith.h>
 
 // #define PACKED		__attribute__ ((packed))
 // #define	ALIGN(n)	__attribute__ ((aligned (n)))

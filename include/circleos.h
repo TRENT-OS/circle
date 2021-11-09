@@ -77,6 +77,8 @@ int SetPowerStateOn (unsigned nDeviceId);
 
 int GetMACAddress (unsigned char Buffer[6]);
 
+int GetCMDLine (unsigned char Buffer[2048]);
+
 unsigned GetClockTicks (void);
 
 //
@@ -89,6 +91,7 @@ unsigned GetClockTicks (void);
 #define CIRCLE_LOG_WARNING		2
 #define CIRCLE_LOG_NOTICE		3
 #define CIRCLE_LOG_DEBUG		4
+#define CIRCLE_LOG_PANIC        5
 
 void LogWrite (
 	const char* pSource,		// short name of module

@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2021  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -20,13 +20,15 @@
 #include <circle/usb/usbmassdevice.h>
 #include <circle/usb/usbhostcontroller.h>
 #include <circle/devicenameservice.h>
-#include <circle/logger.h>
-#include <circle/timer.h>
+// #include <circle/logger.h>
+// #include <circle/timer.h>
 #include <circle/util.h>
 #include <circle/synchronize.h>
 #include <circle/macros.h>
 #include <circle/new.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 #define MAX_TRIES	8				// max. read / write attempts
 
@@ -227,7 +229,7 @@ CUSBBulkOnlyMassStorageDevice::~CUSBBulkOnlyMassStorageDevice (void)
 
 	delete m_pEndpointOut;
 	m_pEndpointOut =  0;
-	
+
 	delete m_pEndpointIn;
 	m_pEndpointIn = 0;
 }
@@ -281,7 +283,7 @@ boolean CUSBBulkOnlyMassStorageDevice::Configure (void)
 
 	if (!CUSBFunction::Configure ())
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "Cannot set interface");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "Cannot set interface");
 
 		return FALSE;
 	}
@@ -299,22 +301,22 @@ boolean CUSBBulkOnlyMassStorageDevice::Configure (void)
 		     &SCSIInquiryResponse, sizeof SCSIInquiryResponse,
 		     TRUE) != (int) sizeof SCSIInquiryResponse)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "Device does not respond");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "Device does not respond");
 
 		return FALSE;
 	}
 
 	if (SCSIInquiryResponse.PeripheralDeviceType != SCSI_PDT_DIRECT_ACCESS_BLOCK)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "Unsupported device type: 0x%02X", (unsigned) SCSIInquiryResponse.PeripheralDeviceType);
-		
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "Unsupported device type: 0x%02X", (unsigned) SCSIInquiryResponse.PeripheralDeviceType);
+
 		return FALSE;
 	}
 
 	unsigned nTries = 100;
 	while (--nTries)
 	{
-		CTimer::Get ()->MsDelay (100);
+        MsDelay(100);
 
 		TSCSITestUnitReady SCSITestUnitReady;
 		SCSITestUnitReady.OperationCode = SCSI_OP_TEST_UNIT_READY;
@@ -339,7 +341,7 @@ boolean CUSBBulkOnlyMassStorageDevice::Configure (void)
 			     &SCSIRequestSenseResponse7x, sizeof SCSIRequestSenseResponse7x,
 			     TRUE) < 0)
 		{
-			CLogger::Get ()->Write (FromUmsd, LogError, "Request sense failed");
+            LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "Request sense failed");
 
 			return FALSE;
 		}
@@ -347,7 +349,7 @@ boolean CUSBBulkOnlyMassStorageDevice::Configure (void)
 
 	if (nTries == 0)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "Unit is not ready");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "Unit is not ready");
 
 		return FALSE;
 	}
@@ -367,7 +369,7 @@ boolean CUSBBulkOnlyMassStorageDevice::Configure (void)
 		     &SCSIReadCapacityResponse, sizeof SCSIReadCapacityResponse,
 		     TRUE) != (int) sizeof SCSIReadCapacityResponse)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "Read capacity failed");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "Read capacity failed");
 
 		return FALSE;
 	}
@@ -375,7 +377,7 @@ boolean CUSBBulkOnlyMassStorageDevice::Configure (void)
 	unsigned nBlockSize = le2be32 (SCSIReadCapacityResponse.BlockLengthInBytes);
 	if (nBlockSize != UMSD_BLOCK_SIZE)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "Unsupported block size: %u", nBlockSize);
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "Unsupported block size: %u", nBlockSize);
 
 		return FALSE;
 	}
@@ -383,19 +385,19 @@ boolean CUSBBulkOnlyMassStorageDevice::Configure (void)
 	m_nBlockCount = le2be32 (SCSIReadCapacityResponse.ReturnedLogicalBlockAddress);
 	if (m_nBlockCount == (u32) -1)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "Unsupported disk size > 2TB");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "Unsupported disk size > 2TB");
 
 		return FALSE;
 	}
 
 	m_nBlockCount++;
 
-	CLogger::Get ()->Write (FromUmsd, LogDebug, "Capacity is %u MByte", m_nBlockCount / (0x100000 / UMSD_BLOCK_SIZE));
+    LogWrite(FromUmsd, CIRCLE_LOG_DEBUG, "Capacity is %u MByte", m_nBlockCount / (0x100000 / UMSD_BLOCK_SIZE));
 
 	unsigned nDeviceNumber = s_DeviceNumberPool.AllocateNumber (FALSE);
 	if (nDeviceNumber == CNumberPool::Invalid)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "Too many devices");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "Too many devices");
 
 		return FALSE;
 	}
@@ -418,7 +420,7 @@ boolean CUSBBulkOnlyMassStorageDevice::Configure (void)
 	}
 
 	CDeviceNameService::Get ()->AddDevice (DeviceName, this, TRUE);
-	
+
 	return TRUE;
 }
 
@@ -513,7 +515,7 @@ int CUSBBulkOnlyMassStorageDevice::TryRead (void *pBuffer, size_t nCount)
 
 	if (Command (&SCSIRead, sizeof SCSIRead, pBuffer, nCount, TRUE) != (int) nCount)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "TryRead failed");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "TryRead failed");
 
 		return -1;
 	}
@@ -550,7 +552,7 @@ int CUSBBulkOnlyMassStorageDevice::TryWrite (const void *pBuffer, size_t nCount)
 
 	if (Command (&SCSIWrite, sizeof SCSIWrite, (void *) pBuffer, nCount, FALSE) < 0)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "TryWrite failed");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "TryWrite failed");
 
 		return -1;
 	}
@@ -583,13 +585,13 @@ int CUSBBulkOnlyMassStorageDevice::Command (void *pCmdBlk, size_t nCmdBlkLen,
 
 	if (pHost->Transfer (m_pEndpointOut, pCBW, sizeof *pCBW) < 0)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "CBW transfer failed");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "CBW transfer failed");
 
 		return -1;
 	}
 
 	int nResult = 0;
-	
+
 	if (nBufLen > 0)
 	{
 		assert (pBuffer != 0);
@@ -610,7 +612,7 @@ int CUSBBulkOnlyMassStorageDevice::Command (void *pCmdBlk, size_t nCmdBlkLen,
 					   pDMABuffer != 0 ? pDMABuffer : pBuffer, nBufLen);
 		if (nResult < 0)
 		{
-			CLogger::Get ()->Write (FromUmsd, LogError, "Data transfer failed");
+            LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "Data transfer failed");
 
 			delete [] pDMABuffer;
 
@@ -633,14 +635,14 @@ int CUSBBulkOnlyMassStorageDevice::Command (void *pCmdBlk, size_t nCmdBlkLen,
 
 	if (pHost->Transfer (m_pEndpointIn, pCSW, sizeof *pCSW) != (int) sizeof *pCSW)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "CSW transfer failed");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "CSW transfer failed");
 
 		if (pHost->ControlMessage (GetEndpoint0 (),
 					   REQUEST_TO_ENDPOINT | REQUEST_OUT, CLEAR_FEATURE,
 					   ENDPOINT_HALT, m_pEndpointIn->GetNumber () | 0x80,
 					   0, 0) < 0)
 		{
-			CLogger::Get ()->Write (FromUmsd, LogDebug,
+            LogWrite(FromUmsd, CIRCLE_LOG_DEBUG,
 						"Cannot clear halt on endpoint IN");
 
 			return -1;
@@ -650,7 +652,7 @@ int CUSBBulkOnlyMassStorageDevice::Command (void *pCmdBlk, size_t nCmdBlkLen,
 
 		if (pHost->Transfer (m_pEndpointIn, pCSW, sizeof *pCSW) != (int) sizeof *pCSW)
 		{
-			CLogger::Get ()->Write (FromUmsd, LogError, "CSW transfer failed twice");
+            LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "CSW transfer failed twice");
 
 			return -1;
 		}
@@ -658,14 +660,14 @@ int CUSBBulkOnlyMassStorageDevice::Command (void *pCmdBlk, size_t nCmdBlkLen,
 
 	if (pCSW->dCSWSignature != CSWSIGNATURE)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "CSW signature is wrong");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "CSW signature is wrong");
 
 		return -1;
 	}
 
 	if (pCSW->dCSWTag != m_nCWBTag)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "CSW tag is wrong");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "CSW tag is wrong");
 
 		return -1;
 	}
@@ -677,7 +679,7 @@ int CUSBBulkOnlyMassStorageDevice::Command (void *pCmdBlk, size_t nCmdBlkLen,
 
 	if (pCSW->dCSWDataResidue != 0)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogError, "Data residue is not 0");
+        LogWrite(FromUmsd, CIRCLE_LOG_ERROR, "Data residue is not 0");
 
 		return -1;
 	}
@@ -689,23 +691,23 @@ int CUSBBulkOnlyMassStorageDevice::Reset (void)
 {
 	CUSBHostController *pHost = GetHost ();
 	assert (pHost != 0);
-	
+
 	if (pHost->ControlMessage (GetEndpoint0 (),
 				   REQUEST_CLASS | REQUEST_TO_INTERFACE | REQUEST_OUT,
 				   BULK_ONLY_MASS_STORAGE_RESET, 0, GetInterfaceNumber (), 0, 0) < 0)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogDebug, "Cannot reset device");
+        LogWrite(FromUmsd, CIRCLE_LOG_DEBUG, "Cannot reset device");
 
 		return -1;
 	}
 
-	CTimer::Get ()->MsDelay (100);
+    MsDelay(100);
 
 	if (pHost->ControlMessage (GetEndpoint0 (),
 				   REQUEST_TO_ENDPOINT | REQUEST_OUT, CLEAR_FEATURE,
 				   ENDPOINT_HALT, m_pEndpointIn->GetNumber () | 0x80, 0, 0) < 0)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogDebug, "Cannot clear halt on endpoint IN");
+        LogWrite(FromUmsd, CIRCLE_LOG_DEBUG, "Cannot clear halt on endpoint IN");
 
 		return -1;
 	}
@@ -714,7 +716,7 @@ int CUSBBulkOnlyMassStorageDevice::Reset (void)
 				   REQUEST_TO_ENDPOINT | REQUEST_OUT, CLEAR_FEATURE,
 				   ENDPOINT_HALT, m_pEndpointOut->GetNumber (), 0, 0) < 0)
 	{
-		CLogger::Get ()->Write (FromUmsd, LogDebug, "Cannot clear halt on endpoint OUT");
+        LogWrite(FromUmsd, CIRCLE_LOG_DEBUG, "Cannot clear halt on endpoint OUT");
 
 		return -1;
 	}

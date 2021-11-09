@@ -7,7 +7,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2021  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -29,11 +29,13 @@
 #include <circle/bcmpropertytags.h>
 #include <circle/bcm2835.h>
 #include <circle/synchronize.h>
-#include <circle/logger.h>
+// #include <circle/logger.h>
 #include <circle/koptions.h>
 #include <circle/sysconfig.h>
 #include <circle/debug.h>
 #include <assert.h>
+
+#include <circleos.h>
 
 //
 // Configuration
@@ -61,10 +63,8 @@ enum TStageSubState
 
 static const char FromDWHCI[] = "dwhci";
 
-CDWHCIDevice::CDWHCIDevice (CInterruptSystem *pInterruptSystem, CTimer *pTimer, boolean bPlugAndPlay)
+CDWHCIDevice::CDWHCIDevice (boolean bPlugAndPlay)
 :	CUSBHostController (bPlugAndPlay),
-	m_pInterruptSystem (pInterruptSystem),
-	m_pTimer (pTimer),
 	m_nChannels (0),
 	m_nChannelAllocated (0),
 	m_nWaitBlockAllocated (0),
@@ -73,9 +73,6 @@ CDWHCIDevice::CDWHCIDevice (CInterruptSystem *pInterruptSystem, CTimer *pTimer, 
 	m_bRootPortEnabled (FALSE),
 	m_bShutdown (FALSE)
 {
-	assert (m_pInterruptSystem != 0);
-	assert (m_pTimer != 0);
-
 	for (unsigned nChannel = 0; nChannel < DWHCI_MAX_CHANNELS; nChannel++)
 	{
 		m_pStageData[nChannel] = 0;
@@ -92,18 +89,21 @@ CDWHCIDevice::~CDWHCIDevice (void)
 	m_bShutdown = TRUE;
 
 	assert (m_pTimer != 0);
-	m_pTimer->MsDelay (200);	// wait for completion of all transactions
+    MsDelay(200);	// wait for completion of all transactions
 
-	assert (m_pInterruptSystem != 0);
-	m_pInterruptSystem->DisconnectIRQ (ARM_IRQ_USB);
+	// assert (m_pInterruptSystem != 0);
+    DisconnectInterrupt(ARM_IRQ_USB);
 
 	Reset ();
 
-	CBcmPropertyTags Tags;
-	TPropertyTagPowerState PowerState;
-	PowerState.nDeviceId = DEVICE_ID_USB_HCD;
-	PowerState.nState = POWER_STATE_OFF | POWER_STATE_WAIT;
-	Tags.GetTag (PROPTAG_SET_POWER_STATE, &PowerState, sizeof PowerState);
+    // ToDo: should be setpowerstateoff
+    SetPowerStateOn(DEVICE_ID_USB_HCD);
+
+	// CBcmPropertyTags Tags;
+	// TPropertyTagPowerState PowerState;
+	// PowerState.nDeviceId = DEVICE_ID_USB_HCD;
+	// PowerState.nState = POWER_STATE_OFF | POWER_STATE_WAIT;
+	// Tags.GetTag (PROPTAG_SET_POWER_STATE, &PowerState, sizeof PowerState);
 
 	m_pInterruptSystem = 0;
 	m_pTimer = 0;
@@ -114,7 +114,7 @@ boolean CDWHCIDevice::Initialize (boolean bScanDevices)
 #ifndef USE_USB_SOF_INTR
 	if (IsPlugAndPlay ())
 	{
-		CLogger::Get ()->Write (FromDWHCI, LogWarning,
+        LogWrite(FromDWHCI, CIRCLE_LOG_WARNING,
 					"Using plug-and-play without USE_USB_SOF_INTR "
 					"is not recommended");
 	}
@@ -129,42 +129,42 @@ boolean CDWHCIDevice::Initialize (boolean bScanDevices)
 
 	PeripheralEntry ();
 
-	assert (m_pInterruptSystem != 0);
-	assert (m_pTimer != 0);
+	// assert (m_pInterruptSystem != 0);
+	// assert (m_pTimer != 0);
 
 	CDWHCIRegister VendorId (DWHCI_CORE_VENDOR_ID);
 	if (VendorId.Read () != 0x4F54280A)
 	{
-		CLogger::Get ()->Write (FromDWHCI, LogError, "Unknown vendor 0x%0X", VendorId.Get ());
+        LogWrite(FromDWHCI, CIRCLE_LOG_ERROR, "Unknown vendor 0x%0X", VendorId.Get ());
 		return FALSE;
 	}
 
 	if (!PowerOn ())
 	{
-		CLogger::Get ()->Write (FromDWHCI, LogError, "Cannot power on");
+        LogWrite(FromDWHCI, CIRCLE_LOG_ERROR, "Cannot power on");
 		return FALSE;
 	}
-	
+
 	// Disable all interrupts
 	CDWHCIRegister AHBConfig (DWHCI_CORE_AHB_CFG);
 	AHBConfig.Read ();
 	AHBConfig.And (~DWHCI_CORE_AHB_CFG_GLOBALINT_MASK);
 	AHBConfig.Write ();
-	
-	assert (m_pInterruptSystem != 0);
-	m_pInterruptSystem->ConnectIRQ (ARM_IRQ_USB, InterruptStub, this);
+
+	// assert (m_pInterruptSystem != 0);
+    ConnectInterrupt(ARM_IRQ_USB,InterruptStub,this);
 
 	if (!InitCore ())
 	{
-		CLogger::Get ()->Write (FromDWHCI, LogError, "Cannot initialize core");
+        LogWrite(FromDWHCI, CIRCLE_LOG_ERROR, "Cannot initialize core");
 		return FALSE;
 	}
-	
+
 	EnableGlobalInterrupts ();
-	
+
 	if (!InitHost ())
 	{
-		CLogger::Get ()->Write (FromDWHCI, LogError, "Cannot initialize host");
+        LogWrite(FromDWHCI, CIRCLE_LOG_ERROR, "Cannot initialize host");
 		return FALSE;
 	}
 
@@ -191,13 +191,13 @@ void CDWHCIDevice::ReScanDevices (void)
 
 			if (!m_RootPort.Initialize ())
 			{
-				CLogger::Get ()->Write (FromDWHCI, LogWarning,
+                LogWrite(FromDWHCI, CIRCLE_LOG_WARNING,
 							"Cannot initialize root port");
 			}
 		}
 		else
 		{
-			CLogger::Get ()->Write (FromDWHCI, LogWarning,
+            LogWrite(FromDWHCI, CIRCLE_LOG_WARNING,
 						"No device connected to root port");
 		}
 	}
@@ -221,7 +221,7 @@ boolean CDWHCIDevice::SubmitBlockingRequest (CUSBRequest *pURB, unsigned nTimeou
 	assert (pURB != 0);
 
 	pURB->SetStatus (0);
-	
+
 	if (pURB->GetEndpoint ()->GetType () == EndpointTypeControl)
 	{
 		assert (nTimeoutMs == USB_TIMEOUT_NONE);
@@ -232,7 +232,7 @@ boolean CDWHCIDevice::SubmitBlockingRequest (CUSBRequest *pURB, unsigned nTimeou
 		if (pSetup->bmRequestType & REQUEST_IN)
 		{
 			assert (pURB->GetBufLen () > 0);
-			
+
 			if (   !TransferStage (pURB, FALSE, FALSE)
 			    || !TransferStage (pURB, TRUE,  FALSE)
 			    || !TransferStage (pURB, FALSE, TRUE))
@@ -266,13 +266,13 @@ boolean CDWHCIDevice::SubmitBlockingRequest (CUSBRequest *pURB, unsigned nTimeou
 		assert (   pURB->GetEndpoint ()->GetType () == EndpointTypeBulk
 		        || pURB->GetEndpoint ()->GetType () == EndpointTypeInterrupt);
 		assert (pURB->GetBufLen () > 0);
-		
+
 		if (!TransferStage (pURB, pURB->GetEndpoint ()->IsDirectionIn (), FALSE, nTimeoutMs))
 		{
 			return FALSE;
 		}
 	}
-	
+
 	PeripheralExit ();
 
 	return TRUE;
@@ -291,9 +291,9 @@ boolean CDWHCIDevice::SubmitAsyncRequest (CUSBRequest *pURB, unsigned nTimeoutMs
 	assert (   pURB->GetEndpoint ()->GetType () == EndpointTypeBulk
 		|| pURB->GetEndpoint ()->GetType () == EndpointTypeInterrupt);
 	assert (pURB->GetBufLen () > 0);
-	
+
 	pURB->SetStatus (0);
-	
+
 	boolean bOK = TransferStageAsync (pURB, pURB->GetEndpoint ()->IsDirectionIn (),
 					  FALSE, nTimeoutMs);
 
@@ -319,7 +319,7 @@ boolean CDWHCIDevice::DeviceConnected (void)
 TUSBSpeed CDWHCIDevice::GetPortSpeed (void)
 {
 	TUSBSpeed Result = USBSpeedUnknown;
-	
+
 	CDWHCIRegister HostPort (DWHCI_HOST_PORT);
 
 	switch (DWHCI_HOST_PORT_SPEED (HostPort.Read ()))
@@ -390,7 +390,7 @@ boolean CDWHCIDevice::InitCore (void)
 
 	if (!Reset ())
 	{
-		CLogger::Get ()->Write (FromDWHCI, LogError, "Reset failed");
+        LogWrite(FromDWHCI, CIRCLE_LOG_ERROR, "Reset failed");
 		return FALSE;
 	}
 
@@ -470,12 +470,12 @@ boolean CDWHCIDevice::InitHost (void)
 #ifdef DWC_CFG_DYNAMIC_FIFO
 	CDWHCIRegister RxFIFOSize (DWHCI_CORE_RX_FIFO_SIZ, DWC_CFG_HOST_RX_FIFO_SIZE);
 	RxFIFOSize.Write ();
-	
+
 	CDWHCIRegister NonPeriodicTxFIFOSize (DWHCI_CORE_NPER_TX_FIFO_SIZ, 0);
 	NonPeriodicTxFIFOSize.Or (DWC_CFG_HOST_RX_FIFO_SIZE);
 	NonPeriodicTxFIFOSize.Or (DWC_CFG_HOST_NPER_TX_FIFO_SIZE << 16);
 	NonPeriodicTxFIFOSize.Write ();
-	
+
 	CDWHCIRegister HostPeriodicTxFIFOSize (DWHCI_CORE_HOST_PER_TX_FIFO_SIZ, 0);
 	HostPeriodicTxFIFOSize.Or (DWC_CFG_HOST_RX_FIFO_SIZE + DWC_CFG_HOST_NPER_TX_FIFO_SIZE);
 	HostPeriodicTxFIFOSize.Or (DWC_CFG_HOST_PER_TX_FIFO_SIZE << 16);
@@ -493,7 +493,7 @@ boolean CDWHCIDevice::InitHost (void)
 		HostPort.Or (DWHCI_HOST_PORT_POWER);
 		HostPort.Write ();
 	}
-	
+
 	EnableHostInterrupts ();
 
 	return TRUE;
@@ -517,15 +517,15 @@ boolean CDWHCIDevice::EnableRootPort (void)
 	{
 		return FALSE;
 	}
-	
-	m_pTimer->MsDelay (100);	// see USB 2.0 spec
+
+	MsDelay (100);	// see USB 2.0 spec
 
 	HostPort.Read ();
 	HostPort.And (~DWHCI_HOST_PORT_DEFAULT_MASK);
 	HostPort.Or (DWHCI_HOST_PORT_RESET);
 	HostPort.Write ();
-	
-	m_pTimer->MsDelay (50);		// see USB 2.0 spec (tDRSTR)
+
+	MsDelay (50);		// see USB 2.0 spec (tDRSTR)
 
 	HostPort.Read ();
 	HostPort.And (~DWHCI_HOST_PORT_DEFAULT_MASK);
@@ -533,37 +533,38 @@ boolean CDWHCIDevice::EnableRootPort (void)
 	HostPort.Write ();
 
 	// normally 10ms, seems to be too short for some devices
-	m_pTimer->MsDelay (20);		// see USB 2.0 spec (tRSTRCY)
+	MsDelay (20);		// see USB 2.0 spec (tRSTRCY)
 
 	return TRUE;
 }
 
 boolean CDWHCIDevice::PowerOn (void)
 {
-	CBcmPropertyTags Tags;
-	TPropertyTagPowerState PowerState;
-	PowerState.nDeviceId = DEVICE_ID_USB_HCD;
-	PowerState.nState = POWER_STATE_ON | POWER_STATE_WAIT;
-	if (   !Tags.GetTag (PROPTAG_SET_POWER_STATE, &PowerState, sizeof PowerState)
-	    ||  (PowerState.nState & POWER_STATE_NO_DEVICE)
-	    || !(PowerState.nState & POWER_STATE_ON))
-	{
-		return FALSE;
-	}
-	
-	return TRUE;
+    return SetPowerStateOn(DEVICE_ID_USB_HCD);
+	// CBcmPropertyTags Tags;
+	// TPropertyTagPowerState PowerState;
+	// PowerState.nDeviceId = DEVICE_ID_USB_HCD;
+	// PowerState.nState = POWER_STATE_ON | POWER_STATE_WAIT;
+	// if (   !Tags.GetTag (PROPTAG_SET_POWER_STATE, &PowerState, sizeof PowerState)
+	//     ||  (PowerState.nState & POWER_STATE_NO_DEVICE)
+	//     || !(PowerState.nState & POWER_STATE_ON))
+	// {
+	// 	return FALSE;
+	// }
+
+	// return TRUE;
 }
 
 boolean CDWHCIDevice::Reset (void)
 {
 	CDWHCIRegister Reset (DWHCI_CORE_RESET, 0);
-	
+
 	// wait for AHB master IDLE state
 	if (!WaitForBit (&Reset, DWHCI_CORE_RESET_AHB_IDLE, TRUE, 100))
 	{
 		return FALSE;
 	}
-	
+
 	// core soft reset
 	Reset.Or (DWHCI_CORE_RESET_SOFT_RESET);
 	Reset.Write ();
@@ -572,8 +573,8 @@ boolean CDWHCIDevice::Reset (void)
 	{
 		return FALSE;
 	}
-	
-	m_pTimer->MsDelay (100);
+
+	MsDelay (100);
 
 	return TRUE;
 }
@@ -627,26 +628,26 @@ void CDWHCIDevice::EnableChannelInterrupt (unsigned nChannel)
 {
 	CDWHCIRegister AllChanInterruptMask (DWHCI_HOST_ALLCHAN_INT_MASK);
 
-	m_IntMaskSpinLock.Acquire ();
+	// m_IntMaskSpinLock.Acquire ();
 
 	AllChanInterruptMask.Read ();
 	AllChanInterruptMask.Or (1 << nChannel);
 	AllChanInterruptMask.Write ();
 
-	m_IntMaskSpinLock.Release ();
+	// m_IntMaskSpinLock.Release ();
 }
 
 void CDWHCIDevice::DisableChannelInterrupt (unsigned nChannel)
 {
 	CDWHCIRegister AllChanInterruptMask (DWHCI_HOST_ALLCHAN_INT_MASK);
 
-	m_IntMaskSpinLock.Acquire ();
+	// m_IntMaskSpinLock.Acquire ();
 
 	AllChanInterruptMask.Read ();
 	AllChanInterruptMask.And (~(1 << nChannel));
 	AllChanInterruptMask.Write ();
 
-	m_IntMaskSpinLock.Release ();
+	// m_IntMaskSpinLock.Release ();
 }
 
 void CDWHCIDevice::FlushTxFIFO (unsigned nFIFO)
@@ -661,8 +662,8 @@ void CDWHCIDevice::FlushTxFIFO (unsigned nFIFO)
 	{
 		return;
 	}
-	
-	m_pTimer->usDelay (1);		// Wait for 3 PHY clocks
+
+	usDelay (1);		// Wait for 3 PHY clocks
 }
 
 void CDWHCIDevice::FlushRxFIFO (void)
@@ -675,8 +676,8 @@ void CDWHCIDevice::FlushRxFIFO (void)
 	{
 		return;
 	}
-	
-	m_pTimer->usDelay (1);		// Wait for 3 PHY clocks
+
+	usDelay (1);		// Wait for 3 PHY clocks
 }
 
 boolean CDWHCIDevice::TransferStage (CUSBRequest *pURB, boolean bIn, boolean bStatusStage,
@@ -687,7 +688,7 @@ boolean CDWHCIDevice::TransferStage (CUSBRequest *pURB, boolean bIn, boolean bSt
 	{
 		return FALSE;
 	}
-	
+
 	assert (pURB != 0);
 	pURB->SetCompletionRoutine (CompletionRoutine, (void *) (uintptr) nWaitBlock, this);
 
@@ -729,7 +730,7 @@ boolean CDWHCIDevice::TransferStageAsync (CUSBRequest *pURB, boolean bIn, boolea
 					  unsigned nTimeoutMs)
 {
 	assert (pURB != 0);
-	
+
 #ifndef USE_USB_SOF_INTR
 	unsigned nChannel = AllocateChannel ();
 	if (nChannel >= m_nChannels)
@@ -766,7 +767,7 @@ boolean CDWHCIDevice::TransferStageAsync (CUSBRequest *pURB, boolean bIn, boolea
 			delete pStageData;
 #ifndef USE_USB_SOF_INTR
 			m_pStageData[nChannel] = 0;
-			
+
 			FreeChannel (nChannel);
 #endif
 
@@ -783,7 +784,7 @@ boolean CDWHCIDevice::TransferStageAsync (CUSBRequest *pURB, boolean bIn, boolea
 #else
 	QueueTransaction (pStageData);
 #endif
-	
+
 	return TRUE;
 }
 
@@ -856,14 +857,14 @@ void CDWHCIDevice::StartTransaction (CDWHCITransferStageData *pStageData)
 	assert (pStageData != 0);
 	unsigned nChannel = pStageData->GetChannelNumber ();
 	assert (nChannel < m_nChannels);
-	
+
 	// channel must be disabled, if not already done but controller
 	CDWHCIRegister Character (DWHCI_HOST_CHAN_CHARACTER (nChannel));
 	Character.Read ();
 	if (Character.IsSet (DWHCI_HOST_CHAN_CHARACTER_ENABLE))
 	{
 		pStageData->SetSubState (StageSubStateWaitForChannelDisable);
-		
+
 		Character.And (~DWHCI_HOST_CHAN_CHARACTER_ENABLE);
 		Character.Or (DWHCI_HOST_CHAN_CHARACTER_DISABLE);
 		Character.Write ();
@@ -883,14 +884,14 @@ void CDWHCIDevice::StartChannel (CDWHCITransferStageData *pStageData)
 	assert (pStageData != 0);
 	unsigned nChannel = pStageData->GetChannelNumber ();
 	assert (nChannel < m_nChannels);
-	
+
 	pStageData->SetSubState (StageSubStateWaitForTransactionComplete);
 
 	// reset all pending channel interrupts
 	CDWHCIRegister ChanInterrupt (DWHCI_HOST_CHAN_INT (nChannel));
 	ChanInterrupt.SetAll ();
 	ChanInterrupt.Write ();
-	
+
 	// set transfer size, packet count and pid
 	CDWHCIRegister TransferSize (DWHCI_HOST_CHAN_XFER_SIZ (nChannel), 0);
 	TransferSize.Or (pStageData->GetBytesToTransfer () & DWHCI_HOST_CHAN_XFER_SIZ_BYTES__MASK);
@@ -900,11 +901,17 @@ void CDWHCIDevice::StartChannel (CDWHCITransferStageData *pStageData)
 	TransferSize.Write ();
 
 	// set DMA address
+    uintptr_t physAddr = dma_getPhysicalAddr(pStageData->m_pBufferPointer);
+
+	if (physAddr == 0) {
+        LogWrite(FromDWHCI, CIRCLE_LOG_ERROR,"Physical address conversion failed! buffer = %p", pStageData->m_pBufferPointer);
+	}
 	CDWHCIRegister DMAAddress (DWHCI_HOST_CHAN_DMA_ADDR (nChannel),
-				   BUS_ADDRESS (pStageData->GetDMAAddress ()));
+				   BUS_ADDRESS ((unsigned)physAddr));
+				//    BUS_ADDRESS (pStageData->GetDMAAddress ()));
 	DMAAddress.Write ();
 
-	CleanAndInvalidateDataCacheRange (pStageData->GetDMAAddress (), pStageData->GetBytesToTransfer ());
+	// CleanAndInvalidateDataCacheRange (pStageData->GetDMAAddress (), pStageData->GetBytesToTransfer ());
 
 	// set split control
 	CDWHCIRegister SplitControl (DWHCI_HOST_CHAN_SPLIT_CTRL (nChannel), 0);
@@ -981,7 +988,7 @@ void CDWHCIDevice::StartChannel (CDWHCITransferStageData *pStageData)
 	CDWHCIRegister ChanInterruptMask (DWHCI_HOST_CHAN_INT_MASK(nChannel));
 	ChanInterruptMask.Set (pStageData->GetStatusMask ());
 	ChanInterruptMask.Write ();
-	
+
 	Character.Or (DWHCI_HOST_CHAN_CHARACTER_ENABLE);
 	Character.And (~DWHCI_HOST_CHAN_CHARACTER_DISABLE);
 	Character.Write ();
@@ -1023,7 +1030,7 @@ void CDWHCIDevice::ChannelInterruptHandler (unsigned nChannel)
 		return;
 
 	case StageSubStateWaitForTransactionComplete: {
-		CleanAndInvalidateDataCacheRange (pStageData->GetDMAAddress (), pStageData->GetBytesToTransfer ());
+		// CleanAndInvalidateDataCacheRange (pStageData->GetDMAAddress (), pStageData->GetBytesToTransfer ());
 
 		CDWHCIRegister TransferSize (DWHCI_HOST_CHAN_XFER_SIZ (nChannel));
 		TransferSize.Read ();
@@ -1052,14 +1059,14 @@ void CDWHCIDevice::ChannelInterruptHandler (unsigned nChannel)
 			DWHCI_HOST_CHAN_XFER_SIZ_PACKETS (TransferSize.Get ()),
 			TransferSize.Get () & DWHCI_HOST_CHAN_XFER_SIZ_BYTES__MASK);
 		} break;
-	
+
 	default:
 		assert (0);
 		break;
 	}
 
 	unsigned nStatus;
-	
+
 	switch (pStageData->GetState ())
 	{
 	case StageStateNoSplitTransfer:
@@ -1081,7 +1088,7 @@ void CDWHCIDevice::ChannelInterruptHandler (unsigned nChannel)
 		}
 		else if (nStatus & DWHCI_HOST_CHAN_INT_ERROR_MASK)
 		{
-			CLogger::Get ()->Write (FromDWHCI, LogError,
+            LogWrite(FromDWHCI, CIRCLE_LOG_ERROR,
 						"Transaction failed (status 0x%X)", nStatus);
 
 			pURB->SetStatus (0);
@@ -1107,8 +1114,8 @@ void CDWHCIDevice::ChannelInterruptHandler (unsigned nChannel)
 
 				unsigned nInterval = pURB->GetEndpoint ()->GetInterval ();
 
-				m_pTimer->StartKernelTimer (MSEC2HZ (nInterval), TimerStub,
-							    pStageData, this);
+				// m_pTimer->StartKernelTimer (MSEC2HZ (nInterval), TimerStub,
+				// 			    pStageData, this);
 #endif
 
 				break;
@@ -1123,7 +1130,7 @@ void CDWHCIDevice::ChannelInterruptHandler (unsigned nChannel)
 
 			pURB->SetStatus (1);
 		}
-		
+
 		DisableChannelInterrupt (nChannel);
 
 		delete pStageData;
@@ -1140,7 +1147,7 @@ void CDWHCIDevice::ChannelInterruptHandler (unsigned nChannel)
 		    || (nStatus & DWHCI_HOST_CHAN_INT_NAK)
 		    || (nStatus & DWHCI_HOST_CHAN_INT_NYET))
 		{
-			CLogger::Get ()->Write (FromDWHCI, LogError,
+            LogWrite(FromDWHCI, CIRCLE_LOG_ERROR,
 						"Transaction failed (status 0x%X)", nStatus);
 
 			pURB->SetStatus (0);
@@ -1166,7 +1173,7 @@ void CDWHCIDevice::ChannelInterruptHandler (unsigned nChannel)
 		{
 			goto LeaveCompleteSplit;
 		}
-		
+
 #ifndef USE_USB_SOF_INTR
 		StartTransaction (pStageData);
 #else
@@ -1176,12 +1183,12 @@ void CDWHCIDevice::ChannelInterruptHandler (unsigned nChannel)
 		QueueTransaction (pStageData);
 #endif
 		break;
-		
+
 	case StageStateCompleteSplit:
 		nStatus = pStageData->GetTransactionStatus ();
 		if (nStatus & DWHCI_HOST_CHAN_INT_ERROR_MASK)
 		{
-			CLogger::Get ()->Write (FromDWHCI, LogError,
+            LogWrite(FromDWHCI, CIRCLE_LOG_ERROR,
 						"Transaction failed (status 0x%X)", nStatus);
 
 			pURB->SetStatus (0);
@@ -1197,7 +1204,7 @@ void CDWHCIDevice::ChannelInterruptHandler (unsigned nChannel)
 			pURB->CallCompletionRoutine ();
 			break;
 		}
-		
+
 		pStageData->GetFrameScheduler ()->TransactionComplete (nStatus);
 
 		if (pStageData->GetFrameScheduler ()->CompleteSplit ())
@@ -1275,8 +1282,8 @@ void CDWHCIDevice::ChannelInterruptHandler (unsigned nChannel)
 
 					unsigned nInterval = pURB->GetEndpoint ()->GetInterval ();
 
-					m_pTimer->StartKernelTimer (MSEC2HZ (nInterval),
-								    TimerStub, pStageData, this);
+					// m_pTimer->StartKernelTimer (MSEC2HZ (nInterval),
+					// 			    TimerStub, pStageData, this);
 #endif
 				}
 			}
@@ -1323,7 +1330,7 @@ void CDWHCIDevice::SOFInterruptHandler (void)
 		unsigned nChannel = AllocateChannel ();
 		if (nChannel >= m_nChannels)
 		{
-			CLogger::Get ()->Write (FromDWHCI, LogPanic, "Too many parallel USB transactions");
+            LogWrite(FromDWHCI, CIRCLE_LOG_PANIC, "Too many parallel USB transactions");
 		}
 		pStageData->SetChannelNumber (nChannel);
 
@@ -1354,7 +1361,7 @@ void CDWHCIDevice::InterruptHandler (void)
 		CDWHCIRegister AllChanInterrupt (DWHCI_HOST_ALLCHAN_INT);
 		AllChanInterrupt.Read ();
 		AllChanInterrupt.Write ();
-		
+
 		unsigned nChannelMask = 1;
 		for (unsigned nChannel = 0; nChannel < m_nChannels; nChannel++)
 		{
@@ -1362,10 +1369,10 @@ void CDWHCIDevice::InterruptHandler (void)
 			{
 				CDWHCIRegister ChanInterruptMask (DWHCI_HOST_CHAN_INT_MASK(nChannel), 0);
 				ChanInterruptMask.Write ();
-				
+
 				ChannelInterruptHandler (nChannel);
 			}
-			
+
 			nChannelMask <<= 1;
 		}
 	}
@@ -1457,7 +1464,7 @@ void CDWHCIDevice::TimerHandler (CDWHCITransferStageData *pStageData)
 	if (pStageData->IsSplit ())
 	{
 		pStageData->SetState (StageStateStartSplit);
-	
+
 		pStageData->SetSplitComplete (FALSE);
 		pStageData->GetFrameScheduler ()->StartSplit ();
 	}
@@ -1475,10 +1482,10 @@ void CDWHCIDevice::TimerStub (TKernelTimerHandle /* hTimer */, void *pParam, voi
 {
 	CDWHCIDevice *pThis = (CDWHCIDevice *) pContext;
 	assert (pThis != 0);
-	
+
 	CDWHCITransferStageData *pStageData = (CDWHCITransferStageData *) pParam;
 	assert (pParam != 0);
-	
+
 	pThis->TimerHandler (pStageData);
 }
 
@@ -1486,7 +1493,7 @@ void CDWHCIDevice::TimerStub (TKernelTimerHandle /* hTimer */, void *pParam, voi
 
 unsigned CDWHCIDevice::AllocateChannel (void)
 {
-	m_ChannelSpinLock.Acquire ();
+	// m_ChannelSpinLock.Acquire ();
 
 	unsigned nChannelMask = 1;
 	for (unsigned nChannel = 0; nChannel < m_nChannels; nChannel++)
@@ -1495,35 +1502,35 @@ unsigned CDWHCIDevice::AllocateChannel (void)
 		{
 			m_nChannelAllocated |= nChannelMask;
 
-			m_ChannelSpinLock.Release ();
-			
+			// m_ChannelSpinLock.Release ();
+
 			return nChannel;
 		}
-		
+
 		nChannelMask <<= 1;
 	}
-	
-	m_ChannelSpinLock.Release ();
-	
+
+	// m_ChannelSpinLock.Release ();
+
 	return DWHCI_MAX_CHANNELS;
 }
 
 void CDWHCIDevice::FreeChannel (unsigned nChannel)
 {
 	assert (nChannel < m_nChannels);
-	unsigned nChannelMask = 1 << nChannel; 
-	
-	m_ChannelSpinLock.Acquire ();
-	
+	unsigned nChannelMask = 1 << nChannel;
+
+	// m_ChannelSpinLock.Acquire ();
+
 	assert (m_nChannelAllocated & nChannelMask);
 	m_nChannelAllocated &= ~nChannelMask;
-	
-	m_ChannelSpinLock.Release ();
+
+	// m_ChannelSpinLock.Release ();
 }
 
 unsigned CDWHCIDevice::AllocateWaitBlock (void)
 {
-	m_WaitBlockSpinLock.Acquire ();
+	// m_WaitBlockSpinLock.Acquire ();
 
 	unsigned nWaitBlockMask = 1;
 	for (unsigned nWaitBlock = 0; nWaitBlock < DWHCI_WAIT_BLOCKS; nWaitBlock++)
@@ -1532,16 +1539,16 @@ unsigned CDWHCIDevice::AllocateWaitBlock (void)
 		{
 			m_nWaitBlockAllocated |= nWaitBlockMask;
 
-			m_WaitBlockSpinLock.Release ();
-			
+			// m_WaitBlockSpinLock.Release ();
+
 			return nWaitBlock;
 		}
-		
+
 		nWaitBlockMask <<= 1;
 	}
-	
-	m_WaitBlockSpinLock.Release ();
-	
+
+	// m_WaitBlockSpinLock.Release ();
+
 	return DWHCI_WAIT_BLOCKS;
 }
 
@@ -1549,13 +1556,13 @@ void CDWHCIDevice::FreeWaitBlock (unsigned nWaitBlock)
 {
 	assert (nWaitBlock < DWHCI_WAIT_BLOCKS);
 	unsigned nWaitBlockMask = 1 << nWaitBlock;
-	
-	m_WaitBlockSpinLock.Acquire ();
-	
+
+	// m_WaitBlockSpinLock.Acquire ();
+
 	assert (m_nWaitBlockAllocated & nWaitBlockMask);
 	m_nWaitBlockAllocated &= ~nWaitBlockMask;
-	
-	m_WaitBlockSpinLock.Release ();
+
+	// m_WaitBlockSpinLock.Release ();
 }
 
 boolean CDWHCIDevice::WaitForBit (CDWHCIRegister *pRegister,
@@ -1569,8 +1576,8 @@ boolean CDWHCIDevice::WaitForBit (CDWHCIRegister *pRegister,
 
 	while ((pRegister->Read () & nMask) ? !bWaitUntilSet : bWaitUntilSet)
 	{
-		assert (m_pTimer != 0);
-		m_pTimer->MsDelay (1);
+		// assert (m_pTimer != 0);
+		MsDelay (1);
 
 		if (--nMsTimeout == 0)
 		{
@@ -1581,7 +1588,7 @@ boolean CDWHCIDevice::WaitForBit (CDWHCIRegister *pRegister,
 			return FALSE;
 		}
 	}
-	
+
 	return TRUE;
 }
 
@@ -1593,7 +1600,7 @@ void CDWHCIDevice::DumpRegister (const char *pName, u32 nAddress)
 
 	DataMemBarrier ();
 
-	CLogger::Get ()->Write (FromDWHCI, LogDebug, "0x%08X %s", Register.Read (), pName);
+    LogWrite(FromDWHCI, CIRCLE_LOG_DEBUG, "0x%08X %s", Register.Read (), pName);
 }
 
 void CDWHCIDevice::DumpStatus (unsigned nChannel)

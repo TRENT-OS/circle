@@ -3,7 +3,7 @@
 //
 // Circle - A C++ bare metal environment for Raspberry Pi
 // Copyright (C) 2014-2021  R. Stange <rsta2@o2online.de>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -85,6 +85,7 @@ public:
 	CUSBRequest *GetURB (void) const;
 	CUSBDevice *GetDevice (void) const;
 	CDWHCIFrameScheduler *GetFrameScheduler (void) const;
+	void		*m_pBufferPointer;
 
 private:
 	unsigned	 m_nChannel;			// parameters
@@ -100,7 +101,7 @@ private:
 	CUSBEndpoint	*m_pEndpoint;
 	TUSBSpeed	 m_Speed;
 	u32		 m_nMaxPacketSize;
-	
+
 	u32		 m_nTransferSize;
 	unsigned	 m_nPackets;
 	u32		 m_nBytesPerTransaction;
@@ -113,7 +114,7 @@ private:
 	unsigned	 m_nErrorCount;
 
 	u32		*m_pTempBuffer;
-	void		*m_pBufferPointer;
+	// void		*m_pBufferPointer;
 
 	unsigned	 m_nStartTicksHZ;
 

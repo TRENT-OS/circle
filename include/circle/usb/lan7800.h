@@ -36,16 +36,16 @@ public:
 
 	boolean Configure (void);
 
-	const CMACAddress *GetMACAddress (void) const;
+	// const CMACAddress *GetMACAddress (void) const;
 
 	boolean SendFrame (const void *pBuffer, unsigned nLength);
-	
+
 	// pBuffer must have size FRAME_BUFFER_SIZE
 	boolean ReceiveFrame (void *pBuffer, unsigned *pResultLength);
 
 	// returns TRUE if PHY link is up
 	boolean IsLinkUp (void);
-	
+
 	TNetDeviceSpeed GetLinkSpeed (void);
 
 private:
